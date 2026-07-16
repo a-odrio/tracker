@@ -1,0 +1,102 @@
+// Prisma schema: sistema de organización, planificación y registro de trabajo
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Prioridad {
+  URGENTE
+  ALTA
+  MEDIA
+  BAJA
+}
+
+model ColorPaleta {
+  id       Int    @id @default(autoincrement())
+  nombre   String
+  valorHex String
+  orden    Int    @default(0)
+}
+
+model Estado {
+  id     Int     @id @default(autoincrement())
+  nombre String
+  orden  Int     @default(0)
+  color  String
+  tareas Tarea[]
+}
+
+model TipoTrabajo {
+  id        Int              @id @default(autoincrement())
+  nombre    String
+  activo    Boolean          @default(true)
+  registros RegistroTiempo[]
+}
+
+model Cliente {
+  id          Int        @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  color       String
+  activo      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  proyectos   Proyecto[]
+}
+
+model Proyecto {
+  id          Int              @id @default(autoincrement())
+  clienteId   Int
+  cliente     Cliente          @relation(fields: [clienteId], references: [id])
+  nombre      String
+  descripcion String?
+  color       String
+  activo      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  tareas      Tarea[]
+  registros   RegistroTiempo[]
+}
+
+model Tarea {
+  id             Int                   @id @default(autoincrement())
+  proyectoId     Int
+  proyecto       Proyecto              @relation(fields: [proyectoId], references: [id])
+  nombre         String
+  descripcion    String?
+  prioridad      Prioridad             @default(MEDIA)
+  estadoId       Int
+  estado         Estado                @relation(fields: [estadoId], references: [id])
+  horasEstimadas Float?
+  orden          Int                   @default(0)
+  createdAt      DateTime              @default(now())
+  registros      RegistroTiempo[]
+  planificacion  PlanificacionSemana[]
+}
+
+model RegistroTiempo {
+  id            Int         @id @default(autoincrement())
+  fecha         DateTime
+  proyectoId    Int
+  proyecto      Proyecto    @relation(fields: [proyectoId], references: [id])
+  tareaId       Int?
+  tarea         Tarea?      @relation(fields: [tareaId], references: [id])
+  tipoTrabajoId Int
+  tipoTrabajo   TipoTrabajo @relation(fields: [tipoTrabajoId], references: [id])
+  horaInicio    String
+  horaFin       String
+  comentarios   String?
+  createdAt     DateTime    @default(now())
+}
+
+model PlanificacionSemana {
+  id                Int      @id @default(autoincrement())
+  tareaId           Int
+  tarea             Tarea    @relation(fields: [tareaId], references: [id])
+  fecha             DateTime
+  horasPlanificadas Float?
+  createdAt         DateTime @default(now())
+}
