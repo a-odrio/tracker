@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
-import type { ClienteItem, ColorPaletaItem, ProyectoItem } from "@/lib/types";
+import type { ClienteItem, ProyectoItem, TemaItem } from "@/lib/types";
 import { Button, ErrorText, Modal } from "@/components/ui";
 import { ClienteCard } from "@/components/proyectos/cliente-card";
 import { ClienteForm } from "@/components/proyectos/cliente-form";
@@ -18,7 +18,7 @@ type ModalState =
 
 export default function ProyectosPage() {
   const [clientes, setClientes] = useState<ClienteItem[]>([]);
-  const [paleta, setPaleta] = useState<ColorPaletaItem[]>([]);
+  const [tema, setTema] = useState<TemaItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modal, setModal] = useState<ModalState>(null);
@@ -27,11 +27,11 @@ export default function ProyectosPage() {
   useEffect(() => {
     Promise.all([
       apiGet<ClienteItem[]>("/api/clientes?incluirArchivados=true"),
-      apiGet<ColorPaletaItem[]>("/api/paleta"),
+      apiGet<TemaItem>("/api/tema"),
     ])
-      .then(([c, p]) => {
+      .then(([c, tm]) => {
         setClientes(c);
-        setPaleta(p);
+        setTema(tm);
         setLoading(false);
       })
       .catch((e) => setError((e as Error).message));
@@ -129,7 +129,7 @@ export default function ProyectosPage() {
     );
   }
 
-  if (loading) {
+  if (loading || !tema) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>;
   }
 
@@ -178,7 +178,7 @@ export default function ProyectosPage() {
       <Modal open={modal !== null} onClose={cerrarModal} title={tituloModal}>
         {modal?.type === "cliente-new" && (
           <ClienteForm
-            paleta={paleta}
+            colorPrincipal={tema.colorPrincipal}
             onSaved={(cliente) => {
               upsertCliente(cliente);
               cerrarModal();
@@ -190,7 +190,7 @@ export default function ProyectosPage() {
         {modal?.type === "cliente-edit" && (
           <>
             <ClienteForm
-              paleta={paleta}
+              colorPrincipal={tema.colorPrincipal}
               cliente={modal.cliente}
               onSaved={(cliente) => {
                 upsertCliente(cliente);
@@ -218,7 +218,7 @@ export default function ProyectosPage() {
 
         {modal?.type === "proyecto-new" && (
           <ProyectoForm
-            paleta={paleta}
+            colorPrincipal={tema.colorPrincipal}
             clienteId={modal.clienteId}
             onSaved={(proyecto) => {
               upsertProyecto(modal.clienteId, proyecto);
@@ -231,7 +231,7 @@ export default function ProyectosPage() {
         {modal?.type === "proyecto-edit" && (
           <>
             <ProyectoForm
-              paleta={paleta}
+              colorPrincipal={tema.colorPrincipal}
               clienteId={modal.clienteId}
               proyecto={modal.proyecto}
               onSaved={(proyecto) => {

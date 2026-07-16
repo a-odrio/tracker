@@ -2,18 +2,18 @@
 
 import { useState } from "react";
 import { apiPatch, apiPost } from "@/lib/api-client";
-import type { ColorPaletaItem, ProyectoItem } from "@/lib/types";
+import type { ProyectoItem } from "@/lib/types";
 import { ColorSwatchPicker } from "@/components/config/color-swatch-picker";
 import { Button, ErrorText, Input, Label, Textarea } from "@/components/ui";
 
 export function ProyectoForm({
-  paleta,
+  colorPrincipal,
   clienteId,
   proyecto,
   onSaved,
   onCancel,
 }: {
-  paleta: ColorPaletaItem[];
+  colorPrincipal: string;
   clienteId: number;
   proyecto?: ProyectoItem;
   onSaved: (proyecto: ProyectoItem) => void;
@@ -21,9 +21,7 @@ export function ProyectoForm({
 }) {
   const [nombre, setNombre] = useState(proyecto?.nombre ?? "");
   const [descripcion, setDescripcion] = useState(proyecto?.descripcion ?? "");
-  const [color, setColor] = useState(
-    proyecto?.color ?? paleta[0]?.valorHex ?? "#3b82f6",
-  );
+  const [color, setColor] = useState(proyecto?.color ?? colorPrincipal);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -59,7 +57,11 @@ export function ProyectoForm({
       </div>
       <div>
         <Label>Color</Label>
-        <ColorSwatchPicker paleta={paleta} value={color} onChange={setColor} />
+        <ColorSwatchPicker
+          colorPrincipal={colorPrincipal}
+          value={color}
+          onChange={setColor}
+        />
       </div>
       <ErrorText>{error}</ErrorText>
       <div className="flex gap-2">

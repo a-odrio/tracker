@@ -2,21 +2,21 @@
 
 import { useState } from "react";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api-client";
-import type { ColorPaletaItem, EstadoItem } from "@/lib/types";
+import type { EstadoItem } from "@/lib/types";
 import { ColorSwatchPicker } from "@/components/config/color-swatch-picker";
 import { Button, ErrorText, Input, Section } from "@/components/ui";
 
 export function EstadosConfig({
   estados,
-  paleta,
+  colorPrincipal,
   onChange,
 }: {
   estados: EstadoItem[];
-  paleta: ColorPaletaItem[];
+  colorPrincipal: string;
   onChange: (estados: EstadoItem[]) => void;
 }) {
   const [nombre, setNombre] = useState("");
-  const [color, setColor] = useState(paleta[0]?.valorHex ?? "#3b82f6");
+  const [color, setColor] = useState(colorPrincipal);
   const [error, setError] = useState("");
 
   const ordenados = [...estados].sort((a, b) => a.orden - b.orden);
@@ -115,7 +115,11 @@ export function EstadosConfig({
           <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">
             Color
           </label>
-          <ColorSwatchPicker paleta={paleta} value={color} onChange={setColor} />
+          <ColorSwatchPicker
+            colorPrincipal={colorPrincipal}
+            value={color}
+            onChange={setColor}
+          />
         </div>
         <Button onClick={agregar} disabled={!nombre}>
           Agregar estado

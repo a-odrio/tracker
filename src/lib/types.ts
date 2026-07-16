@@ -1,12 +1,8 @@
 export type Prioridad = "URGENTE" | "ALTA" | "MEDIA" | "BAJA";
 
-export interface ColorPaletaItem {
+export interface TemaItem {
   id: number;
-  nombre: string;
-  valorHex: string;
-  orden: number;
-  principal: boolean;
-  secundario: boolean;
+  colorPrincipal: string;
 }
 
 export interface EstadoItem {

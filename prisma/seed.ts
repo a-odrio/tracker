@@ -8,20 +8,9 @@ const adapter = new PrismaBetterSqlite3({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const paletaCount = await prisma.colorPaleta.count();
-  if (paletaCount === 0) {
-    await prisma.colorPaleta.createMany({
-      data: [
-        { nombre: "Azul", valorHex: "#3b82f6", orden: 0, principal: true },
-        { nombre: "Verde", valorHex: "#22c55e", orden: 1, secundario: true },
-        { nombre: "Ámbar", valorHex: "#f59e0b", orden: 2 },
-        { nombre: "Rojo", valorHex: "#ef4444", orden: 3 },
-        { nombre: "Violeta", valorHex: "#8b5cf6", orden: 4 },
-        { nombre: "Rosa", valorHex: "#ec4899", orden: 5 },
-        { nombre: "Cian", valorHex: "#06b6d4", orden: 6 },
-        { nombre: "Gris", valorHex: "#6b7280", orden: 7 },
-      ],
-    });
+  const temaCount = await prisma.tema.count();
+  if (temaCount === 0) {
+    await prisma.tema.create({ data: { colorPrincipal: "#3b82f6" } });
   }
 
   const estadoCount = await prisma.estado.count();

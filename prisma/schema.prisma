@@ -16,13 +16,9 @@ enum Prioridad {
   BAJA
 }
 
-model ColorPaleta {
-  id         Int     @id @default(autoincrement())
-  nombre     String
-  valorHex   String
-  orden      Int     @default(0)
-  principal  Boolean @default(false)
-  secundario Boolean @default(false)
+model Tema {
+  id             Int    @id @default(autoincrement())
+  colorPrincipal String @default("#3b82f6")
 }
 
 model Estado {

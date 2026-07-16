@@ -2,24 +2,24 @@
 
 import { useState } from "react";
 import { apiPatch, apiPost } from "@/lib/api-client";
-import type { ClienteItem, ColorPaletaItem } from "@/lib/types";
+import type { ClienteItem } from "@/lib/types";
 import { ColorSwatchPicker } from "@/components/config/color-swatch-picker";
 import { Button, ErrorText, Input, Label, Textarea } from "@/components/ui";
 
 export function ClienteForm({
-  paleta,
+  colorPrincipal,
   cliente,
   onSaved,
   onCancel,
 }: {
-  paleta: ColorPaletaItem[];
+  colorPrincipal: string;
   cliente?: ClienteItem;
   onSaved: (cliente: ClienteItem) => void;
   onCancel: () => void;
 }) {
   const [nombre, setNombre] = useState(cliente?.nombre ?? "");
   const [descripcion, setDescripcion] = useState(cliente?.descripcion ?? "");
-  const [color, setColor] = useState(cliente?.color ?? paleta[0]?.valorHex ?? "#3b82f6");
+  const [color, setColor] = useState(cliente?.color ?? colorPrincipal);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -55,7 +55,11 @@ export function ClienteForm({
       </div>
       <div>
         <Label>Color</Label>
-        <ColorSwatchPicker paleta={paleta} value={color} onChange={setColor} />
+        <ColorSwatchPicker
+          colorPrincipal={colorPrincipal}
+          value={color}
+          onChange={setColor}
+        />
       </div>
       <ErrorText>{error}</ErrorText>
       <div className="flex gap-2">

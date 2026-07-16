@@ -28,14 +28,10 @@ export const tipoTrabajoSchema = z.object({
   activo: z.boolean().optional(),
 });
 
-export const colorPaletaSchema = z.object({
-  nombre: z.string().min(1, "El nombre es obligatorio"),
-  valorHex: z
+export const temaSchema = z.object({
+  colorPrincipal: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Formato hex inválido (ej: #3b82f6)"),
-  orden: z.number().int().optional(),
-  principal: z.boolean().optional(),
-  secundario: z.boolean().optional(),
 });
 
 export const tareaSchema = z.object({

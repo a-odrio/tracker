@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/api-client";
-import type { ColorPaletaItem, EstadoItem, TipoTrabajoItem } from "@/lib/types";
+import type { EstadoItem, TemaItem, TipoTrabajoItem } from "@/lib/types";
 import { EstadosConfig } from "@/components/config/estados-config";
 import { TiposTrabajoConfig } from "@/components/config/tipos-trabajo-config";
-import { PaletaConfig } from "@/components/config/paleta-config";
+import { ColorPrincipalConfig } from "@/components/config/color-principal-config";
 
 export default function ConfiguracionPage() {
   const [estados, setEstados] = useState<EstadoItem[]>([]);
   const [tipos, setTipos] = useState<TipoTrabajoItem[]>([]);
-  const [paleta, setPaleta] = useState<ColorPaletaItem[]>([]);
+  const [tema, setTema] = useState<TemaItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -18,12 +18,12 @@ export default function ConfiguracionPage() {
     Promise.all([
       apiGet<EstadoItem[]>("/api/estados"),
       apiGet<TipoTrabajoItem[]>("/api/tipos-trabajo?incluirInactivos=true"),
-      apiGet<ColorPaletaItem[]>("/api/paleta"),
+      apiGet<TemaItem>("/api/tema"),
     ])
-      .then(([e, t, p]) => {
+      .then(([e, t, tm]) => {
         setEstados(e);
         setTipos(t);
-        setPaleta(p);
+        setTema(tm);
         setLoading(false);
       })
       .catch((e) => setError((e as Error).message));
@@ -37,7 +37,7 @@ export default function ConfiguracionPage() {
     );
   }
 
-  if (loading) {
+  if (loading || !tema) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>;
   }
 
@@ -46,8 +46,15 @@ export default function ConfiguracionPage() {
       <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
         Configuración
       </h1>
-      <PaletaConfig paleta={paleta} onChange={setPaleta} />
-      <EstadosConfig estados={estados} paleta={paleta} onChange={setEstados} />
+      <ColorPrincipalConfig
+        colorPrincipal={tema.colorPrincipal}
+        onChange={(colorPrincipal) => setTema({ ...tema, colorPrincipal })}
+      />
+      <EstadosConfig
+        estados={estados}
+        colorPrincipal={tema.colorPrincipal}
+        onChange={setEstados}
+      />
       <TiposTrabajoConfig tipos={tipos} onChange={setTipos} />
     </div>
   );
