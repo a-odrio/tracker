@@ -2,19 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/api-client";
-import type {
-  ClienteItem,
-  ColorPaletaItem,
-  EstadoItem,
-  TipoTrabajoItem,
-} from "@/lib/types";
-import { ClientesProyectosConfig } from "@/components/config/clientes-proyectos-config";
+import type { ColorPaletaItem, EstadoItem, TipoTrabajoItem } from "@/lib/types";
 import { EstadosConfig } from "@/components/config/estados-config";
 import { TiposTrabajoConfig } from "@/components/config/tipos-trabajo-config";
 import { PaletaConfig } from "@/components/config/paleta-config";
 
 export default function ConfiguracionPage() {
-  const [clientes, setClientes] = useState<ClienteItem[]>([]);
   const [estados, setEstados] = useState<EstadoItem[]>([]);
   const [tipos, setTipos] = useState<TipoTrabajoItem[]>([]);
   const [paleta, setPaleta] = useState<ColorPaletaItem[]>([]);
@@ -23,13 +16,11 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     Promise.all([
-      apiGet<ClienteItem[]>("/api/clientes?incluirArchivados=true"),
       apiGet<EstadoItem[]>("/api/estados"),
       apiGet<TipoTrabajoItem[]>("/api/tipos-trabajo?incluirInactivos=true"),
       apiGet<ColorPaletaItem[]>("/api/paleta"),
     ])
-      .then(([c, e, t, p]) => {
-        setClientes(c);
+      .then(([e, t, p]) => {
         setEstados(e);
         setTipos(t);
         setPaleta(p);
@@ -56,11 +47,6 @@ export default function ConfiguracionPage() {
         Configuración
       </h1>
       <PaletaConfig paleta={paleta} onChange={setPaleta} />
-      <ClientesProyectosConfig
-        clientes={clientes}
-        paleta={paleta}
-        onChange={setClientes}
-      />
       <EstadosConfig estados={estados} paleta={paleta} onChange={setEstados} />
       <TiposTrabajoConfig tipos={tipos} onChange={setTipos} />
     </div>

@@ -12,9 +12,23 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const color = await prisma.colorPaleta.update({
-    where: { id: Number(id) },
-    data: parsed.data,
+  const color = await prisma.$transaction(async (tx) => {
+    if (parsed.data.principal === true) {
+      await tx.colorPaleta.updateMany({
+        where: { NOT: { id: Number(id) } },
+        data: { principal: false },
+      });
+    }
+    if (parsed.data.secundario === true) {
+      await tx.colorPaleta.updateMany({
+        where: { NOT: { id: Number(id) } },
+        data: { secundario: false },
+      });
+    }
+    return tx.colorPaleta.update({
+      where: { id: Number(id) },
+      data: parsed.data,
+    });
   });
   return NextResponse.json(color);
 }

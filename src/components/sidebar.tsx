@@ -81,7 +81,7 @@ export function Sidebar() {
                 collapsed ? "justify-center px-0" : ""
               } ${
                 active
-                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                  ? "bg-[var(--accent-primary)] text-[var(--accent-primary-fg)]"
                   : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               }`}
             >

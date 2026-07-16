@@ -12,8 +12,8 @@ async function main() {
   if (paletaCount === 0) {
     await prisma.colorPaleta.createMany({
       data: [
-        { nombre: "Azul", valorHex: "#3b82f6", orden: 0 },
-        { nombre: "Verde", valorHex: "#22c55e", orden: 1 },
+        { nombre: "Azul", valorHex: "#3b82f6", orden: 0, principal: true },
+        { nombre: "Verde", valorHex: "#22c55e", orden: 1, secundario: true },
         { nombre: "Ámbar", valorHex: "#f59e0b", orden: 2 },
         { nombre: "Rojo", valorHex: "#ef4444", orden: 3 },
         { nombre: "Violeta", valorHex: "#8b5cf6", orden: 4 },

@@ -5,6 +5,10 @@
 :root {
   --background: #f8fafc;
   --foreground: #171717;
+  --accent-primary: #3b82f6;
+  --accent-primary-fg: #ffffff;
+  --accent-secondary: #22c55e;
+  --accent-secondary-fg: #ffffff;
 }
 
 @theme inline {

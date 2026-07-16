@@ -5,6 +5,8 @@ export interface ColorPaletaItem {
   nombre: string;
   valorHex: string;
   orden: number;
+  principal: boolean;
+  secundario: boolean;
 }
 
 export interface EstadoItem {

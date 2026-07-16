@@ -34,6 +34,8 @@ export const colorPaletaSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Formato hex inválido (ej: #3b82f6)"),
   orden: z.number().int().optional(),
+  principal: z.boolean().optional(),
+  secundario: z.boolean().optional(),
 });
 
 export const tareaSchema = z.object({

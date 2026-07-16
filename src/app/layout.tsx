@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AccentProvider } from "@/components/accent-provider";
 import { Sidebar } from "@/components/sidebar";
 
 const geistSans = Geist({
@@ -32,6 +33,7 @@ export default function RootLayout({
     >
       <body className="h-full">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AccentProvider />
           <div className="flex h-screen">
             <Sidebar />
             <main className="flex-1 overflow-auto bg-slate-50 p-6 dark:bg-slate-950">
