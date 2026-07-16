@@ -64,6 +64,14 @@ export function contrastForeground(hex: string): string {
   return luminance > 0.45 ? "#0f172a" : "#ffffff";
 }
 
+/** Sets the CSS custom properties that drive the app's accent color, live. */
+export function applyAccentColor(hex: string) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement.style;
+  root.setProperty("--accent-primary", hex);
+  root.setProperty("--accent-primary-fg", contrastForeground(hex));
+}
+
 /**
  * Derives a small set of hue-rotated swatches from a base color, keeping
  * saturation/lightness in a consistently visible range so the result reads

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { apiPatch } from "@/lib/api-client";
-import { generateThemeSwatches } from "@/lib/color";
+import { applyAccentColor, generateThemeSwatches } from "@/lib/color";
 import type { TemaItem } from "@/lib/types";
 import { ErrorText, Section } from "@/components/ui";
 
@@ -21,6 +21,7 @@ export function ColorPrincipalConfig({
     try {
       const tema = await apiPatch<TemaItem>("/api/tema", { colorPrincipal: hex });
       onChange(tema.colorPrincipal);
+      applyAccentColor(tema.colorPrincipal);
     } catch (e) {
       setError((e as Error).message);
     }
