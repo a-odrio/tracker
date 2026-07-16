@@ -18,7 +18,7 @@ import type { EstadoItem, ProyectoItem, TareaItem } from "@/lib/types";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
 import { TaskCard } from "@/components/kanban/task-card";
 import { TaskForm } from "@/components/tasks/task-form";
-import { Button } from "@/components/ui";
+import { Button, Modal } from "@/components/ui";
 
 type Columns = Record<number, TareaItem[]>;
 
@@ -169,7 +169,14 @@ export function KanbanBoard({
         </Button>
       </div>
 
-      {(showForm || editing) && (
+      <Modal
+        open={showForm || !!editing}
+        onClose={() => {
+          setEditing(null);
+          setShowForm(false);
+        }}
+        title={editing ? "Editar tarea" : "Nueva tarea"}
+      >
         <TaskForm
           key={editing?.id ?? "new"}
           proyectos={[proyecto]}
@@ -193,7 +200,7 @@ export function KanbanBoard({
             setShowForm(false);
           }}
         />
-      )}
+      </Modal>
 
       <DndContext
         sensors={sensors}
