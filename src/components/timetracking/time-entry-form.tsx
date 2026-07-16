@@ -97,7 +97,7 @@ export function TimeEntryForm({
   const tareasDisponibles = tareas.filter((t) => t.proyectoId === proyectoId);
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+    <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div>
           <Label>Fecha</Label>

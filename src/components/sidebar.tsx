@@ -19,7 +19,7 @@ const LINKS = [
   { href: "/proyectos", label: "Proyectos", icon: FolderKanban },
   { href: "/tareas", label: "Tareas", icon: ListChecks },
   { href: "/planificacion", label: "Planificación", icon: CalendarDays },
-  { href: "/registro", label: "Registro de tiempo", icon: Clock },
+  { href: "/registro", label: "Registro de Trabajo", icon: Clock },
   { href: "/reportes", label: "Reportes", icon: BarChart3 },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];

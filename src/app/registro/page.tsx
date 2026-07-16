@@ -10,7 +10,7 @@ import type {
   TipoTrabajoItem,
 } from "@/lib/types";
 import { formatDate, toDateOnlyISO, weekDays, weekRange } from "@/lib/utils";
-import { Button, Select } from "@/components/ui";
+import { Button, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
 import { WeekCalendar, type Agrupacion } from "@/components/timetracking/week-calendar";
 
@@ -87,7 +87,7 @@ export default function RegistroPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          Registro de tiempo
+          Registro de Trabajo
         </h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={() => setWeekAnchor((d) => addWeeks(d, -1))}>
@@ -122,16 +122,32 @@ export default function RegistroPage() {
           </span>
         </div>
         <Button
+          disabled={proyectos.length === 0}
           onClick={() => {
             setEditing(null);
-            setShowForm((v) => !v);
+            setShowForm(true);
           }}
         >
-          {showForm && !editing ? "Cerrar" : "+ Nuevo registro"}
+          + Nuevo registro
         </Button>
       </div>
 
-      {(showForm || editing) && proyectos.length > 0 && (
+      {proyectos.length === 0 && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
+          Necesitás crear al menos un cliente y un proyecto antes de cargar registros.
+          Andá a Configuración.
+        </p>
+      )}
+
+      <Modal
+        open={(showForm || !!editing) && proyectos.length > 0}
+        onClose={() => {
+          setEditing(null);
+          setShowForm(false);
+        }}
+        title={editing ? "Editar registro" : "Nuevo registro"}
+        size="lg"
+      >
         <TimeEntryForm
           key={editing?.id ?? "new"}
           proyectos={proyectos}
@@ -154,16 +170,15 @@ export default function RegistroPage() {
             setShowForm(false);
           }}
         />
-      )}
-
-      {editing && (
-        <button
-          onClick={() => eliminar(editing)}
-          className="text-xs font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-        >
-          Eliminar este registro
-        </button>
-      )}
+        {editing && (
+          <button
+            onClick={() => eliminar(editing)}
+            className="mt-3 text-xs font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+          >
+            Eliminar este registro
+          </button>
+        )}
+      </Modal>
 
       {loading ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>

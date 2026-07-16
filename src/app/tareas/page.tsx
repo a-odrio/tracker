@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet } from "@/lib/api-client";
 import type { ClienteItem, EstadoItem, Prioridad, TareaItem } from "@/lib/types";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
-import { Button, Select } from "@/components/ui";
+import { Button, Modal, Select } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
 import { TaskTable } from "@/components/tasks/task-table";
 
@@ -89,23 +89,31 @@ export default function TareasPage() {
           Tareas
         </h1>
         <Button
+          disabled={proyectos.length === 0}
           onClick={() => {
             setEditing(null);
-            setShowForm((v) => !v);
+            setShowForm(true);
           }}
         >
-          {showForm && !editing ? "Cerrar" : "+ Nueva tarea"}
+          + Nueva tarea
         </Button>
       </div>
 
-      {showForm && !editing && proyectos.length === 0 && (
+      {proyectos.length === 0 && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
           Necesitás crear al menos un cliente y un proyecto antes de agregar tareas.
           Andá a Configuración.
         </p>
       )}
 
-      {(showForm || editing) && proyectos.length > 0 && (
+      <Modal
+        open={(showForm || !!editing) && proyectos.length > 0}
+        onClose={() => {
+          setEditing(null);
+          setShowForm(false);
+        }}
+        title={editing ? "Editar tarea" : "Nueva tarea"}
+      >
         <TaskForm
           key={editing?.id ?? "new"}
           proyectos={proyectos}
@@ -126,7 +134,7 @@ export default function TareasPage() {
             setShowForm(false);
           }}
         />
-      )}
+      </Modal>
 
       <div className="flex flex-wrap gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <Select

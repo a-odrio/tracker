@@ -65,7 +65,7 @@ export function TaskForm({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+    <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <Label>Nombre</Label>
