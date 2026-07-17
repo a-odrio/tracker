@@ -24,6 +24,7 @@ export interface ClienteItem {
   descripcion: string | null;
   color: string;
   activo: boolean;
+  predeterminado: boolean;
   proyectos?: ProyectoItem[];
 }
 

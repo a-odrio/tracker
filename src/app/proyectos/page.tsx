@@ -80,6 +80,22 @@ export default function ProyectosPage() {
     }
   }
 
+  async function toggleClientePredeterminado(cliente: ClienteItem) {
+    try {
+      const actualizado = await apiPatch<ClienteItem>(`/api/clientes/${cliente.id}`, {
+        predeterminado: !cliente.predeterminado,
+      });
+      setClientes((prev) =>
+        prev.map((c) => {
+          if (c.id === actualizado.id) return { ...actualizado, proyectos: c.proyectos };
+          return c.predeterminado ? { ...c, predeterminado: false } : c;
+        }),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   async function eliminarCliente(cliente: ClienteItem) {
     setActionError("");
     try {
@@ -167,6 +183,7 @@ export default function ProyectosPage() {
             key={cliente.id}
             cliente={cliente}
             onEditCliente={() => setModal({ type: "cliente-edit", cliente })}
+            onTogglePredeterminado={() => toggleClientePredeterminado(cliente)}
             onNuevoProyecto={() => setModal({ type: "proyecto-new", clienteId: cliente.id })}
             onEditProyecto={(proyecto) =>
               setModal({ type: "proyecto-edit", clienteId: cliente.id, proyecto })

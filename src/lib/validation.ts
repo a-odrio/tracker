@@ -7,6 +7,7 @@ export const clienteSchema = z.object({
   descripcion: z.string().optional().nullable(),
   color: z.string().min(1, "Elegí un color"),
   activo: z.boolean().optional(),
+  predeterminado: z.boolean().optional(),
 });
 
 export const proyectoSchema = z.object({

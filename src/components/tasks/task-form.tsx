@@ -2,13 +2,20 @@
 
 import { useState } from "react";
 import { apiPatch, apiPost } from "@/lib/api-client";
-import type { EstadoItem, Prioridad, ProyectoItem, TareaItem } from "@/lib/types";
+import type {
+  ClienteItem,
+  EstadoItem,
+  Prioridad,
+  ProyectoItem,
+  TareaItem,
+} from "@/lib/types";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
 import { Button, ErrorText, Input, Label, Select, Textarea } from "@/components/ui";
 
 const PRIORIDADES: Prioridad[] = ["URGENTE", "ALTA", "MEDIA", "BAJA"];
 
 export function TaskForm({
+  clientes,
   proyectos,
   estados,
   tarea,
@@ -16,6 +23,8 @@ export function TaskForm({
   onSaved,
   onCancel,
 }: {
+  /** When provided, shows a Cliente selector that filters the Proyecto options. */
+  clientes?: ClienteItem[];
   proyectos: ProyectoItem[];
   estados: EstadoItem[];
   tarea?: TareaItem;
@@ -28,6 +37,10 @@ export function TaskForm({
   const [proyectoId, setProyectoId] = useState(
     tarea?.proyectoId ?? defaultProyectoId ?? proyectos[0]?.id ?? 0,
   );
+  const proyectoInicial = proyectos.find((p) => p.id === proyectoId);
+  const [clienteId, setClienteId] = useState<number | "">(
+    proyectoInicial?.clienteId ?? clientes?.[0]?.id ?? "",
+  );
   const [prioridad, setPrioridad] = useState<Prioridad>(tarea?.prioridad ?? "MEDIA");
   const [estadoId, setEstadoId] = useState(tarea?.estadoId ?? estados[0]?.id ?? 0);
   const [horasEstimadas, setHorasEstimadas] = useState(
@@ -35,6 +48,18 @@ export function TaskForm({
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const proyectosFiltrados = clientes
+    ? proyectos.filter((p) => !clienteId || p.clienteId === clienteId)
+    : proyectos;
+
+  function cambiarCliente(id: number) {
+    setClienteId(id);
+    const disponibles = proyectos.filter((p) => p.clienteId === id);
+    if (!disponibles.some((p) => p.id === proyectoId)) {
+      setProyectoId(disponibles[0]?.id ?? 0);
+    }
+  }
 
   async function guardar() {
     setError("");
@@ -79,15 +104,32 @@ export function TaskForm({
             onChange={(e) => setDescripcion(e.target.value)}
           />
         </div>
+        {clientes && (
+          <div>
+            <Label>Cliente</Label>
+            <Select
+              value={clienteId}
+              onChange={(e) => cambiarCliente(Number(e.target.value))}
+            >
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
         <div>
           <Label>Proyecto</Label>
           <Select
             value={proyectoId}
             onChange={(e) => setProyectoId(Number(e.target.value))}
           >
-            {proyectos.map((p) => (
+            {proyectosFiltrados.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.cliente?.nombre ? `${p.cliente.nombre} · ${p.nombre}` : p.nombre}
+                {clientes
+                  ? p.nombre
+                  : (p.cliente?.nombre ? `${p.cliente.nombre} · ${p.nombre}` : p.nombre)}
               </option>
             ))}
           </Select>

@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { apiDelete, apiGet } from "@/lib/api-client";
-import type { ClienteItem, EstadoItem, Prioridad, TareaItem } from "@/lib/types";
+import type {
+  ClienteItem,
+  EstadoItem,
+  Prioridad,
+  ProyectoItem,
+  TareaItem,
+} from "@/lib/types";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
 import { Button, Modal, Select } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -10,6 +16,7 @@ import { TaskTable } from "@/components/tasks/task-table";
 
 export default function TareasPage() {
   const [clientes, setClientes] = useState<ClienteItem[]>([]);
+  const [proyectos, setProyectos] = useState<ProyectoItem[]>([]);
   const [estados, setEstados] = useState<EstadoItem[]>([]);
   const [tareas, setTareas] = useState<TareaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +30,6 @@ export default function TareasPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TareaItem | null>(null);
 
-  const proyectos = useMemo(
-    () => clientes.flatMap((c) => c.proyectos ?? []),
-    [clientes],
-  );
   const proyectosFiltrados = clienteId
     ? proyectos.filter((p) => p.clienteId === clienteId)
     : proyectos;
@@ -34,11 +37,15 @@ export default function TareasPage() {
   useEffect(() => {
     Promise.all([
       apiGet<ClienteItem[]>("/api/clientes"),
+      apiGet<ProyectoItem[]>("/api/proyectos"),
       apiGet<EstadoItem[]>("/api/estados"),
     ])
-      .then(([c, e]) => {
+      .then(([c, p, e]) => {
         setClientes(c);
+        setProyectos(p);
         setEstados(e);
+        const predeterminado = c.find((cl) => cl.predeterminado);
+        if (predeterminado) setClienteId(predeterminado.id);
       })
       .catch((e) => setError((e as Error).message));
   }, []);
@@ -102,7 +109,7 @@ export default function TareasPage() {
       {proyectos.length === 0 && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
           Necesitás crear al menos un cliente y un proyecto antes de agregar tareas.
-          Andá a Configuración.
+          Andá a Proyectos.
         </p>
       )}
 
@@ -116,6 +123,7 @@ export default function TareasPage() {
       >
         <TaskForm
           key={editing?.id ?? "new"}
+          clientes={clientes}
           proyectos={proyectos}
           estados={estados}
           tarea={editing ?? undefined}

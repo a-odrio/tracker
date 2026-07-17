@@ -1,17 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Star } from "lucide-react";
 import type { ClienteItem, ProyectoItem } from "@/lib/types";
 
 export function ClienteCard({
   cliente,
   onEditCliente,
+  onTogglePredeterminado,
   onNuevoProyecto,
   onEditProyecto,
 }: {
   cliente: ClienteItem;
   onEditCliente: () => void;
+  onTogglePredeterminado: () => void;
   onNuevoProyecto: () => void;
   onEditProyecto: (proyecto: ProyectoItem) => void;
 }) {
@@ -36,6 +38,21 @@ export function ClienteCard({
             Archivado
           </span>
         )}
+        <button
+          onClick={onTogglePredeterminado}
+          title={
+            cliente.predeterminado
+              ? "Cliente predeterminado en los filtros"
+              : "Marcar como cliente predeterminado en los filtros"
+          }
+          className={`shrink-0 ${
+            cliente.predeterminado
+              ? "text-amber-500"
+              : "text-slate-300 hover:text-amber-500 dark:text-slate-600"
+          }`}
+        >
+          <Star size={14} fill={cliente.predeterminado ? "currentColor" : "none"} />
+        </button>
         <button
           onClick={onEditCliente}
           title="Editar cliente"

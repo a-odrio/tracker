@@ -12,9 +12,17 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const cliente = await prisma.cliente.update({
-    where: { id: Number(id) },
-    data: parsed.data,
+  const cliente = await prisma.$transaction(async (tx) => {
+    if (parsed.data.predeterminado === true) {
+      await tx.cliente.updateMany({
+        where: { NOT: { id: Number(id) } },
+        data: { predeterminado: false },
+      });
+    }
+    return tx.cliente.update({
+      where: { id: Number(id) },
+      data: parsed.data,
+    });
   });
   return NextResponse.json(cliente);
 }

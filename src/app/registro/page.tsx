@@ -51,6 +51,8 @@ export default function RegistroPage() {
         setTipos(ti);
         setEstados(e);
         setTema(tm);
+        const predeterminado = c.find((cl) => cl.predeterminado);
+        if (predeterminado) setClienteFiltro(predeterminado.id);
       })
       .catch((e) => setError((e as Error).message));
   }, []);

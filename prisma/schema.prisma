@@ -37,13 +37,14 @@ model TipoTrabajo {
 }
 
 model Cliente {
-  id          Int        @id @default(autoincrement())
-  nombre      String
-  descripcion String?
-  color       String
-  activo      Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  proyectos   Proyecto[]
+  id             Int        @id @default(autoincrement())
+  nombre         String
+  descripcion    String?
+  color          String
+  activo         Boolean    @default(true)
+  predeterminado Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  proyectos      Proyecto[]
 }
 
 model Proyecto {

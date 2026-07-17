@@ -154,6 +154,7 @@ export function TimeEntryForm({
           Nueva tarea
         </h3>
         <TaskForm
+          clientes={clientes}
           proyectos={proyectos}
           estados={estados}
           defaultProyectoId={proyectoId}
