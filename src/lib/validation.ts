@@ -42,6 +42,7 @@ export const tareaSchema = z.object({
   prioridad: prioridadEnum.optional(),
   estadoId: z.number().int(),
   horasEstimadas: z.number().nonnegative().optional().nullable(),
+  imprevista: z.boolean().optional(),
   orden: z.number().int().optional(),
 });
 

@@ -12,7 +12,13 @@ import type {
   TemaItem,
   TipoTrabajoItem,
 } from "@/lib/types";
-import { formatDate, toDateOnlyISO, weekDays, weekRange } from "@/lib/utils";
+import {
+  formatDate,
+  sumarMinutosSinSolapar,
+  toDateOnlyISO,
+  weekDays,
+  weekRange,
+} from "@/lib/utils";
 import { Button, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
 import { WeekCalendar } from "@/components/timetracking/week-calendar";
@@ -87,11 +93,7 @@ export default function RegistroPage() {
     ? registros.filter((r) => r.proyecto?.clienteId === clienteFiltro)
     : registros;
 
-  const totalHoras = registrosFiltrados.reduce((sum, r) => {
-    const [h1, m1] = r.horaInicio.split(":").map(Number);
-    const [h2, m2] = r.horaFin.split(":").map(Number);
-    return sum + (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
-  }, 0);
+  const totalHoras = sumarMinutosSinSolapar(registrosFiltrados) / 60;
 
   if (error) {
     return (
@@ -140,8 +142,9 @@ export default function RegistroPage() {
               </option>
             ))}
           </Select>
-          <span className="text-sm text-slate-500 dark:text-slate-400">
-            Total semana: <span className="font-medium">{totalHoras}h</span>
+          <span className="whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
+            Total semana:{" "}
+            <span className="font-medium">{totalHoras.toFixed(2)}h</span>
           </span>
         </div>
         <Button
@@ -182,6 +185,7 @@ export default function RegistroPage() {
             colorPrincipal={tema.colorPrincipal}
             registrosDelDia={registros}
             registro={editing ?? undefined}
+            clienteInicial={clienteFiltro || undefined}
             onProyectoCreated={(proyecto) => setProyectos((prev) => [...prev, proyecto])}
             onTareaCreated={(tarea) => setTareas((prev) => [...prev, tarea])}
             onSaved={(registro) => {

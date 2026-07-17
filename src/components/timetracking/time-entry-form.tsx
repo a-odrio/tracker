@@ -34,6 +34,8 @@ export function TimeEntryForm({
   colorPrincipal,
   registrosDelDia,
   registro,
+  /** Cliente preseleccionado (ej. el filtro general de la pantalla). */
+  clienteInicial,
   onProyectoCreated,
   onTareaCreated,
   onSaved,
@@ -47,6 +49,7 @@ export function TimeEntryForm({
   colorPrincipal: string;
   registrosDelDia: RegistroTiempoItem[];
   registro?: RegistroTiempoItem;
+  clienteInicial?: number;
   onProyectoCreated: (proyecto: ProyectoItem) => void;
   onTareaCreated: (tarea: TareaItem) => void;
   onSaved: (registro: RegistroTiempoItem) => void;
@@ -56,8 +59,20 @@ export function TimeEntryForm({
   const [fecha, setFecha] = useState(
     registro?.fecha.slice(0, 10) ?? toDateOnlyISO(new Date()),
   );
+
+  const clienteIdInicial = registro
+    ? (proyectos.find((p) => p.id === registro.proyectoId)?.clienteId ?? "")
+    : (clienteInicial ??
+      clientes.find((c) => c.predeterminado)?.id ??
+      clientes[0]?.id ??
+      "");
+  const proyectosDelClienteInicial = proyectos.filter(
+    (p) => p.clienteId === clienteIdInicial,
+  );
+
+  const [clienteId, setClienteId] = useState<number | "">(clienteIdInicial);
   const [proyectoId, setProyectoId] = useState(
-    registro?.proyectoId ?? proyectos[0]?.id ?? 0,
+    registro?.proyectoId ?? proyectosDelClienteInicial[0]?.id ?? proyectos[0]?.id ?? 0,
   );
   const [tareaId, setTareaId] = useState<number | "">(registro?.tareaId ?? "");
   const [tipoTrabajoId, setTipoTrabajoId] = useState(
@@ -68,6 +83,19 @@ export function TimeEntryForm({
   const [comentarios, setComentarios] = useState(registro?.comentarios ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const proyectosFiltrados = proyectos.filter(
+    (p) => !clienteId || p.clienteId === clienteId,
+  );
+
+  function cambiarCliente(id: number) {
+    setClienteId(id);
+    const disponibles = proyectos.filter((p) => p.clienteId === id);
+    if (!disponibles.some((p) => p.id === proyectoId)) {
+      setProyectoId(disponibles[0]?.id ?? 0);
+      setTareaId("");
+    }
+  }
 
   const solapa = useMemo(() => {
     if (!horaInicio || !horaFin) return false;
@@ -129,8 +157,10 @@ export function TimeEntryForm({
         <ProyectoForm
           colorPrincipal={colorPrincipal}
           clientes={clientes}
+          clienteId={clienteId || undefined}
           onSaved={(proyecto) => {
             onProyectoCreated(proyecto);
+            setClienteId(proyecto.clienteId);
             setProyectoId(proyecto.id);
             setTareaId("");
             setSubVista("form");
@@ -160,6 +190,9 @@ export function TimeEntryForm({
           defaultProyectoId={proyectoId}
           onSaved={(tarea) => {
             onTareaCreated(tarea);
+            setClienteId(
+              proyectos.find((p) => p.id === tarea.proyectoId)?.clienteId ?? clienteId,
+            );
             setProyectoId(tarea.proyectoId);
             setTareaId(tarea.id);
             setSubVista("form");
@@ -172,10 +205,23 @@ export function TimeEntryForm({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
           <Label>Fecha</Label>
           <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+        </div>
+        <div>
+          <Label>Cliente</Label>
+          <Select
+            value={clienteId}
+            onChange={(e) => cambiarCliente(Number(e.target.value))}
+          >
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </Select>
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between">
@@ -195,9 +241,9 @@ export function TimeEntryForm({
               setTareaId("");
             }}
           >
-            {proyectos.map((p) => (
+            {proyectosFiltrados.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.cliente?.nombre ? `${p.cliente.nombre} · ${p.nombre}` : p.nombre}
+                {p.nombre}
               </option>
             ))}
           </Select>
@@ -255,7 +301,7 @@ export function TimeEntryForm({
             onChange={(e) => setHoraFin(e.target.value)}
           />
         </div>
-        <div className="col-span-2 sm:col-span-3">
+        <div className="col-span-2 sm:col-span-4">
           <Label>Comentarios</Label>
           <Textarea
             rows={2}

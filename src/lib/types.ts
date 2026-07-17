@@ -46,6 +46,7 @@ export interface TareaItem {
   prioridad: Prioridad;
   estadoId: number;
   horasEstimadas: number | null;
+  imprevista: boolean;
   orden: number;
   proyecto?: ProyectoItem;
   estado?: EstadoItem;

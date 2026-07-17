@@ -52,6 +52,7 @@ export function TaskForm({
   const [horasEstimadas, setHorasEstimadas] = useState(
     tarea?.horasEstimadas?.toString() ?? "",
   );
+  const [imprevista, setImprevista] = useState(tarea?.imprevista ?? false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -77,6 +78,7 @@ export function TaskForm({
       prioridad,
       estadoId: Number(estadoId),
       horasEstimadas: horasEstimadas ? Number(horasEstimadas) : null,
+      imprevista,
     };
     try {
       const resultado = tarea
@@ -175,6 +177,21 @@ export function TaskForm({
             value={horasEstimadas}
             onChange={(e) => setHorasEstimadas(e.target.value)}
           />
+        </div>
+        <div className="col-span-2 flex items-center gap-2 pt-1">
+          <input
+            id="imprevista"
+            type="checkbox"
+            checked={imprevista}
+            onChange={(e) => setImprevista(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-[var(--accent-primary)] dark:border-slate-700"
+          />
+          <label
+            htmlFor="imprevista"
+            className="text-sm text-slate-700 dark:text-slate-300"
+          >
+            Tarea imprevista
+          </label>
         </div>
       </div>
       <ErrorText>{error}</ErrorText>

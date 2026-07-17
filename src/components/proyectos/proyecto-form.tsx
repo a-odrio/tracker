@@ -15,9 +15,11 @@ export function ProyectoForm({
   onCancel,
 }: {
   colorPrincipal: string;
-  /** Fixed cliente (used from the Proyectos page, where the card already picks it). */
+  /**
+   * Without `clientes`: the fixed cliente (Proyectos page, card already picks it — no
+   * selector shown). With `clientes`: just the initial value for an editable selector.
+   */
   clienteId?: number;
-  /** Needed when clienteId isn't fixed, so the form can offer its own picker. */
   clientes?: ClienteItem[];
   proyecto?: ProyectoItem;
   onSaved: (proyecto: ProyectoItem) => void;
@@ -27,17 +29,19 @@ export function ProyectoForm({
   const [descripcion, setDescripcion] = useState(proyecto?.descripcion ?? "");
   const [color, setColor] = useState(proyecto?.color ?? colorPrincipal);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(
-    clienteId ?? proyecto?.clienteId ?? clientes?.[0]?.id ?? 0,
+    proyecto?.clienteId ?? clienteId ?? clientes?.[0]?.id ?? 0,
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const clienteIdFinal = clientes ? clienteSeleccionado : (clienteId ?? clienteSeleccionado);
 
   async function guardar() {
     setError("");
     setSaving(true);
     try {
       const payload = {
-        clienteId: clienteId ?? clienteSeleccionado,
+        clienteId: clienteIdFinal,
         nombre,
         descripcion: descripcion || null,
         color,
@@ -55,14 +59,14 @@ export function ProyectoForm({
 
   return (
     <div className="space-y-3">
-      {clienteId === undefined && (
+      {clientes && (
         <div>
           <Label>Cliente</Label>
           <Select
             value={clienteSeleccionado}
             onChange={(e) => setClienteSeleccionado(Number(e.target.value))}
           >
-            {(clientes ?? []).map((c) => (
+            {clientes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre}
               </option>
@@ -92,10 +96,7 @@ export function ProyectoForm({
       </div>
       <ErrorText>{error}</ErrorText>
       <div className="flex gap-2">
-        <Button
-          onClick={guardar}
-          disabled={!nombre || saving || !(clienteId ?? clienteSeleccionado)}
-        >
+        <Button onClick={guardar} disabled={!nombre || saving || !clienteIdFinal}>
           {proyecto ? "Guardar cambios" : "Crear proyecto"}
         </Button>
         <Button variant="secondary" onClick={onCancel}>

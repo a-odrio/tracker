@@ -2,6 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Zap } from "lucide-react";
 import type { TareaItem } from "@/lib/types";
 import { PRIORIDAD_COLOR, PRIORIDAD_LABEL } from "@/lib/utils";
 
@@ -31,7 +32,12 @@ export function TaskCard({
       className="cursor-grab rounded-lg border border-slate-200 bg-white p-3 shadow-sm active:cursor-grabbing dark:border-slate-800 dark:bg-slate-900"
     >
       <div className="mb-1.5 flex items-start justify-between gap-2">
-        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+        <span className="flex items-center gap-1 text-sm font-medium text-slate-900 dark:text-slate-100">
+          {tarea.imprevista && (
+            <span title="Tarea imprevista">
+              <Zap size={12} className="shrink-0 text-amber-500" />
+            </span>
+          )}
           {tarea.nombre}
         </span>
         <span

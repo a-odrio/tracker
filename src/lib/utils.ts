@@ -33,6 +33,44 @@ export function timeToMinutes(time: string) {
   return h * 60 + m;
 }
 
+/**
+ * Total minutes actually covered by a set of [fecha, horaInicio, horaFin]
+ * intervals, merging overlaps within the same day so double-booked time
+ * isn't counted twice.
+ */
+export function sumarMinutosSinSolapar(
+  intervalos: { fecha: string; horaInicio: string; horaFin: string }[],
+) {
+  const porDia = new Map<string, { inicio: number; fin: number }[]>();
+  for (const i of intervalos) {
+    const dia = i.fecha.slice(0, 10);
+    const lista = porDia.get(dia) ?? [];
+    lista.push({ inicio: timeToMinutes(i.horaInicio), fin: timeToMinutes(i.horaFin) });
+    porDia.set(dia, lista);
+  }
+
+  let total = 0;
+  for (const lista of porDia.values()) {
+    const ordenados = [...lista].sort((a, b) => a.inicio - b.inicio);
+    let actualInicio = -1;
+    let actualFin = -1;
+    for (const { inicio, fin } of ordenados) {
+      if (actualInicio === -1) {
+        actualInicio = inicio;
+        actualFin = fin;
+      } else if (inicio <= actualFin) {
+        actualFin = Math.max(actualFin, fin);
+      } else {
+        total += actualFin - actualInicio;
+        actualInicio = inicio;
+        actualFin = fin;
+      }
+    }
+    if (actualInicio !== -1) total += actualFin - actualInicio;
+  }
+  return total;
+}
+
 export function minutesToDurationLabel(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

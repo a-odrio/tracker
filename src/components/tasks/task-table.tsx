@@ -1,5 +1,6 @@
 "use client";
 
+import { Zap } from "lucide-react";
 import type { TareaItem } from "@/lib/types";
 import { PRIORIDAD_COLOR, PRIORIDAD_LABEL } from "@/lib/utils";
 
@@ -37,7 +38,12 @@ export function TaskTable({
           {tareas.map((tarea) => (
             <tr key={tarea.id}>
               <td className="py-2.5 pr-3">
-                <div className="font-medium text-slate-900 dark:text-slate-100">
+                <div className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-100">
+                  {tarea.imprevista && (
+                    <span title="Tarea imprevista">
+                      <Zap size={13} className="shrink-0 text-amber-500" />
+                    </span>
+                  )}
                   {tarea.nombre}
                 </div>
                 {tarea.descripcion && (

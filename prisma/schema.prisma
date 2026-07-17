@@ -70,6 +70,7 @@ model Tarea {
   estadoId       Int
   estado         Estado                @relation(fields: [estadoId], references: [id])
   horasEstimadas Float?
+  imprevista     Boolean               @default(false)
   orden          Int                   @default(0)
   createdAt      DateTime              @default(now())
   registros      RegistroTiempo[]
