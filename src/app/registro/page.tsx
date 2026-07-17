@@ -37,6 +37,11 @@ export default function RegistroPage() {
   const [clienteFiltro, setClienteFiltro] = useState<number | "">("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<RegistroTiempoItem | null>(null);
+  const [seleccion, setSeleccion] = useState<{
+    fecha: string;
+    horaInicio: string;
+    horaFin: string;
+  } | null>(null);
 
   const dias = useMemo(() => weekDays(weekAnchor), [weekAnchor]);
   const { start, end } = useMemo(() => weekRange(weekAnchor), [weekAnchor]);
@@ -86,6 +91,7 @@ export default function RegistroPage() {
     await apiDelete(`/api/registros-tiempo/${registro.id}`);
     setRegistros((prev) => prev.filter((r) => r.id !== registro.id));
     setEditing(null);
+    setSeleccion(null);
     setShowForm(false);
   }
 
@@ -151,6 +157,7 @@ export default function RegistroPage() {
           disabled={proyectos.length === 0}
           onClick={() => {
             setEditing(null);
+            setSeleccion(null);
             setShowForm(true);
           }}
         >
@@ -170,13 +177,19 @@ export default function RegistroPage() {
           open={(showForm || !!editing) && proyectos.length > 0}
           onClose={() => {
             setEditing(null);
+            setSeleccion(null);
             setShowForm(false);
           }}
           title={editing ? "Editar registro" : "Nuevo registro"}
           size="lg"
         >
           <TimeEntryForm
-            key={editing?.id ?? "new"}
+            key={
+              editing?.id ??
+              (seleccion
+                ? `sel-${seleccion.fecha}-${seleccion.horaInicio}-${seleccion.horaFin}`
+                : "new")
+            }
             clientes={clientes}
             proyectos={proyectos}
             tareas={tareas}
@@ -186,6 +199,7 @@ export default function RegistroPage() {
             registrosDelDia={registros}
             registro={editing ?? undefined}
             clienteInicial={clienteFiltro || undefined}
+            valoresIniciales={seleccion ?? undefined}
             onProyectoCreated={(proyecto) => setProyectos((prev) => [...prev, proyecto])}
             onTareaCreated={(tarea) => setTareas((prev) => [...prev, tarea])}
             onSaved={(registro) => {
@@ -196,10 +210,12 @@ export default function RegistroPage() {
                   : [...prev, registro];
               });
               setEditing(null);
+              setSeleccion(null);
               setShowForm(false);
             }}
             onCancel={() => {
               setEditing(null);
+              setSeleccion(null);
               setShowForm(false);
             }}
           />
@@ -223,6 +239,12 @@ export default function RegistroPage() {
             registros={registrosFiltrados}
             onEdit={(registro) => {
               setEditing(registro);
+              setSeleccion(null);
+              setShowForm(true);
+            }}
+            onSelect={(fecha, horaInicio, horaFin) => {
+              setEditing(null);
+              setSeleccion({ fecha, horaInicio, horaFin });
               setShowForm(true);
             }}
           />

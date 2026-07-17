@@ -36,6 +36,8 @@ export function TimeEntryForm({
   registro,
   /** Cliente preseleccionado (ej. el filtro general de la pantalla). */
   clienteInicial,
+  /** Fecha/horario preseleccionados (ej. selección arrastrada en el calendario). */
+  valoresIniciales,
   onProyectoCreated,
   onTareaCreated,
   onSaved,
@@ -50,6 +52,7 @@ export function TimeEntryForm({
   registrosDelDia: RegistroTiempoItem[];
   registro?: RegistroTiempoItem;
   clienteInicial?: number;
+  valoresIniciales?: { fecha: string; horaInicio: string; horaFin: string };
   onProyectoCreated: (proyecto: ProyectoItem) => void;
   onTareaCreated: (tarea: TareaItem) => void;
   onSaved: (registro: RegistroTiempoItem) => void;
@@ -57,7 +60,7 @@ export function TimeEntryForm({
 }) {
   const [subVista, setSubVista] = useState<SubVista>("form");
   const [fecha, setFecha] = useState(
-    registro?.fecha.slice(0, 10) ?? toDateOnlyISO(new Date()),
+    registro?.fecha.slice(0, 10) ?? valoresIniciales?.fecha ?? toDateOnlyISO(new Date()),
   );
 
   const clienteIdInicial = registro
@@ -78,8 +81,12 @@ export function TimeEntryForm({
   const [tipoTrabajoId, setTipoTrabajoId] = useState(
     registro?.tipoTrabajoId ?? tipos[0]?.id ?? 0,
   );
-  const [horaInicio, setHoraInicio] = useState(registro?.horaInicio ?? "09:00");
-  const [horaFin, setHoraFin] = useState(registro?.horaFin ?? "10:00");
+  const [horaInicio, setHoraInicio] = useState(
+    registro?.horaInicio ?? valoresIniciales?.horaInicio ?? "09:00",
+  );
+  const [horaFin, setHoraFin] = useState(
+    registro?.horaFin ?? valoresIniciales?.horaFin ?? "10:00",
+  );
   const [comentarios, setComentarios] = useState(registro?.comentarios ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);

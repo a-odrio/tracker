@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RegistroTiempoItem } from "@/lib/types";
-import { formatDate, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
+import { formatDate, minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
 
 const HOUR_HEIGHT = 52;
 const HORA_INICIO_DEFAULT = 8;
+const SNAP_MIN = 15;
+
+type DragState = { diaISO: string; startMin: number; currentMin: number };
 
 function layoutDia(items: RegistroTiempoItem[]) {
   const ordenados = [...items].sort(
@@ -42,10 +45,13 @@ export function WeekCalendar({
   dias,
   registros,
   onEdit,
+  onSelect,
 }: {
   dias: Date[];
   registros: RegistroTiempoItem[];
   onEdit: (registro: RegistroTiempoItem) => void;
+  /** Se dispara al seleccionar un período libre arrastrando en el calendario. */
+  onSelect?: (fecha: string, horaInicio: string, horaFin: string) => void;
 }) {
   const { horaInicioEje, horaFinEje } = useMemo(() => {
     let min = HORA_INICIO_DEFAULT;
@@ -56,6 +62,67 @@ export function WeekCalendar({
     }
     return { horaInicioEje: min, horaFinEje: max };
   }, [registros]);
+
+  const rangeRef = useRef({ horaInicioEje, horaFinEje });
+  useEffect(() => {
+    rangeRef.current = { horaInicioEje, horaFinEje };
+  }, [horaInicioEje, horaFinEje]);
+  const dragElRef = useRef<HTMLDivElement | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragState | null>(null);
+
+  function minutesFromClientY(clientY: number) {
+    const el = dragElRef.current;
+    const { horaInicioEje: hi, horaFinEje: hf } = rangeRef.current;
+    if (!el) return hi * 60;
+    const rect = el.getBoundingClientRect();
+    const y = Math.max(0, Math.min(rect.height, clientY - rect.top));
+    const raw = hi * 60 + (y / HOUR_HEIGHT) * 60;
+    const snapped = Math.round(raw / SNAP_MIN) * SNAP_MIN;
+    return Math.max(hi * 60, Math.min(hf * 60, snapped));
+  }
+
+  useEffect(() => {
+    function handleMove(e: MouseEvent) {
+      if (!dragStateRef.current) return;
+      dragStateRef.current = {
+        ...dragStateRef.current,
+        currentMin: minutesFromClientY(e.clientY),
+      };
+      setDragPreview(dragStateRef.current);
+    }
+    function handleUp() {
+      const d = dragStateRef.current;
+      dragStateRef.current = null;
+      dragElRef.current = null;
+      setDragPreview(null);
+      if (!d || !onSelect) return;
+      let inicio = Math.min(d.startMin, d.currentMin);
+      let fin = Math.max(d.startMin, d.currentMin);
+      if (fin - inicio < SNAP_MIN) {
+        const { horaInicioEje: hi, horaFinEje: hf } = rangeRef.current;
+        fin = Math.min(inicio + 60, hf * 60);
+        inicio = Math.max(fin - 60, hi * 60);
+      }
+      onSelect(d.diaISO, minutesToTime(inicio), minutesToTime(fin));
+    }
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+  }, [onSelect]);
+
+  function onDayMouseDown(e: React.MouseEvent<HTMLDivElement>, dia: Date) {
+    if ((e.target as HTMLElement).closest("button")) return;
+    e.preventDefault();
+    dragElRef.current = e.currentTarget;
+    const min = minutesFromClientY(e.clientY);
+    const diaISO = toDateOnlyISO(dia);
+    dragStateRef.current = { diaISO, startMin: min, currentMin: min };
+    setDragPreview(dragStateRef.current);
+  }
 
   const horas = Array.from(
     { length: horaFinEje - horaInicioEje + 1 },
@@ -68,8 +135,11 @@ export function WeekCalendar({
     return registros.filter((r) => r.fecha.slice(0, 10) === iso);
   }
 
+  function topForMinutes(minutos: number) {
+    return ((minutos - horaInicioEje * 60) / 60) * HOUR_HEIGHT;
+  }
   function topFor(horaInicio: string) {
-    return ((timeToMinutes(horaInicio) - horaInicioEje * 60) / 60) * HOUR_HEIGHT;
+    return topForMinutes(timeToMinutes(horaInicio));
   }
   function heightFor(horaInicio: string, horaFin: string) {
     return Math.max(
@@ -111,15 +181,37 @@ export function WeekCalendar({
               </div>
               <div
                 style={{ height: alturaTotal }}
-                className="relative bg-slate-50/50 dark:bg-slate-950/40"
+                className="relative cursor-crosshair select-none bg-slate-50/50 dark:bg-slate-950/40"
+                onMouseDown={(e) => onDayMouseDown(e, dia)}
               >
                 {horas.map((h, i) => (
                   <div
                     key={h}
                     style={{ top: i * HOUR_HEIGHT }}
-                    className="absolute w-full border-t border-slate-100 dark:border-slate-800"
+                    className="pointer-events-none absolute w-full border-t border-slate-100 dark:border-slate-800"
                   />
                 ))}
+                {dragPreview && dragPreview.diaISO === toDateOnlyISO(dia) && (
+                  <div
+                    style={{
+                      top: Math.min(
+                        topForMinutes(dragPreview.startMin),
+                        topForMinutes(dragPreview.currentMin),
+                      ),
+                      height: Math.max(
+                        Math.abs(
+                          topForMinutes(dragPreview.currentMin) -
+                            topForMinutes(dragPreview.startMin),
+                        ),
+                        4,
+                      ),
+                    }}
+                    className="pointer-events-none absolute inset-x-1 z-10 overflow-hidden rounded-md border-2 border-dashed border-[var(--accent-primary)] bg-[var(--accent-primary)]/20 px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent-primary)]"
+                  >
+                    {minutesToTime(Math.min(dragPreview.startMin, dragPreview.currentMin))}–
+                    {minutesToTime(Math.max(dragPreview.startMin, dragPreview.currentMin))}
+                  </div>
+                )}
                 {items.map(({ registro, left, width }) => (
                   <button
                     key={registro.id}

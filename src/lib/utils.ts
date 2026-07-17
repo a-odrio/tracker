@@ -33,6 +33,12 @@ export function timeToMinutes(time: string) {
   return h * 60 + m;
 }
 
+export function minutesToTime(minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /**
  * Total minutes actually covered by a set of [fecha, horaInicio, horaFin]
  * intervals, merging overlaps within the same day so double-booked time
