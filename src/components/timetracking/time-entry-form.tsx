@@ -1,8 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { apiPatch, apiPost } from "@/lib/api-client";
 import type {
+  ClienteItem,
+  EstadoItem,
   ProyectoItem,
   RegistroTiempoItem,
   TareaItem,
@@ -17,24 +20,39 @@ import {
   Select,
   Textarea,
 } from "@/components/ui";
+import { ProyectoForm } from "@/components/proyectos/proyecto-form";
+import { TaskForm } from "@/components/tasks/task-form";
+
+type SubVista = "form" | "nuevo-proyecto" | "nueva-tarea";
 
 export function TimeEntryForm({
+  clientes,
   proyectos,
   tareas,
   tipos,
+  estados,
+  colorPrincipal,
   registrosDelDia,
   registro,
+  onProyectoCreated,
+  onTareaCreated,
   onSaved,
   onCancel,
 }: {
+  clientes: ClienteItem[];
   proyectos: ProyectoItem[];
   tareas: TareaItem[];
   tipos: TipoTrabajoItem[];
+  estados: EstadoItem[];
+  colorPrincipal: string;
   registrosDelDia: RegistroTiempoItem[];
   registro?: RegistroTiempoItem;
+  onProyectoCreated: (proyecto: ProyectoItem) => void;
+  onTareaCreated: (tarea: TareaItem) => void;
   onSaved: (registro: RegistroTiempoItem) => void;
   onCancel?: () => void;
 }) {
+  const [subVista, setSubVista] = useState<SubVista>("form");
   const [fecha, setFecha] = useState(
     registro?.fecha.slice(0, 10) ?? toDateOnlyISO(new Date()),
   );
@@ -96,6 +114,61 @@ export function TimeEntryForm({
 
   const tareasDisponibles = tareas.filter((t) => t.proyectoId === proyectoId);
 
+  if (subVista === "nuevo-proyecto") {
+    return (
+      <div className="space-y-3">
+        <button
+          onClick={() => setSubVista("form")}
+          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        >
+          ← Volver al registro
+        </button>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          Nuevo proyecto
+        </h3>
+        <ProyectoForm
+          colorPrincipal={colorPrincipal}
+          clientes={clientes}
+          onSaved={(proyecto) => {
+            onProyectoCreated(proyecto);
+            setProyectoId(proyecto.id);
+            setTareaId("");
+            setSubVista("form");
+          }}
+          onCancel={() => setSubVista("form")}
+        />
+      </div>
+    );
+  }
+
+  if (subVista === "nueva-tarea") {
+    return (
+      <div className="space-y-3">
+        <button
+          onClick={() => setSubVista("form")}
+          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        >
+          ← Volver al registro
+        </button>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          Nueva tarea
+        </h3>
+        <TaskForm
+          proyectos={proyectos}
+          estados={estados}
+          defaultProyectoId={proyectoId}
+          onSaved={(tarea) => {
+            onTareaCreated(tarea);
+            setProyectoId(tarea.proyectoId);
+            setTareaId(tarea.id);
+            setSubVista("form");
+          }}
+          onCancel={() => setSubVista("form")}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -104,7 +177,16 @@ export function TimeEntryForm({
           <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </div>
         <div>
-          <Label>Proyecto</Label>
+          <div className="mb-1 flex items-center justify-between">
+            <Label>Proyecto</Label>
+            <button
+              type="button"
+              onClick={() => setSubVista("nuevo-proyecto")}
+              className="flex items-center gap-0.5 text-xs font-medium text-[var(--accent-primary)] hover:underline"
+            >
+              <Plus size={11} /> Nuevo
+            </button>
+          </div>
           <Select
             value={proyectoId}
             onChange={(e) => {
@@ -120,7 +202,17 @@ export function TimeEntryForm({
           </Select>
         </div>
         <div>
-          <Label>Tarea (opcional)</Label>
+          <div className="mb-1 flex items-center justify-between">
+            <Label>Tarea (opcional)</Label>
+            <button
+              type="button"
+              onClick={() => setSubVista("nueva-tarea")}
+              disabled={!proyectoId}
+              className="flex items-center gap-0.5 text-xs font-medium text-[var(--accent-primary)] hover:underline disabled:opacity-40"
+            >
+              <Plus size={11} /> Nueva
+            </button>
+          </div>
           <Select
             value={tareaId}
             onChange={(e) => setTareaId(e.target.value ? Number(e.target.value) : "")}
