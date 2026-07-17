@@ -34,12 +34,18 @@ export function TaskForm({
 }) {
   const [nombre, setNombre] = useState(tarea?.nombre ?? "");
   const [descripcion, setDescripcion] = useState(tarea?.descripcion ?? "");
-  const [proyectoId, setProyectoId] = useState(
-    tarea?.proyectoId ?? defaultProyectoId ?? proyectos[0]?.id ?? 0,
-  );
-  const proyectoInicial = proyectos.find((p) => p.id === proyectoId);
+
+  const clientePredeterminado = clientes?.find((c) => c.predeterminado);
+  const proyectoPorDefecto =
+    (tarea && proyectos.find((p) => p.id === tarea.proyectoId)) ||
+    (defaultProyectoId && proyectos.find((p) => p.id === defaultProyectoId)) ||
+    (clientePredeterminado &&
+      proyectos.find((p) => p.clienteId === clientePredeterminado.id)) ||
+    proyectos[0];
+
+  const [proyectoId, setProyectoId] = useState(proyectoPorDefecto?.id ?? 0);
   const [clienteId, setClienteId] = useState<number | "">(
-    proyectoInicial?.clienteId ?? clientes?.[0]?.id ?? "",
+    proyectoPorDefecto?.clienteId ?? clientePredeterminado?.id ?? clientes?.[0]?.id ?? "",
   );
   const [prioridad, setPrioridad] = useState<Prioridad>(tarea?.prioridad ?? "MEDIA");
   const [estadoId, setEstadoId] = useState(tarea?.estadoId ?? estados[0]?.id ?? 0);
