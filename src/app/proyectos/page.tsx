@@ -92,7 +92,7 @@ export default function ProyectosPage() {
         }),
       );
     } catch (e) {
-      setError((e as Error).message);
+      alert((e as Error).message);
     }
   }
 
