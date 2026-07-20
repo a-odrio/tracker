@@ -22,8 +22,9 @@ import {
 } from "@/components/ui";
 import { ProyectoForm } from "@/components/proyectos/proyecto-form";
 import { TaskForm } from "@/components/tasks/task-form";
+import { TipoTrabajoForm } from "@/components/config/tipo-trabajo-form";
 
-type SubVista = "form" | "nuevo-proyecto" | "nueva-tarea";
+type SubVista = "form" | "nuevo-proyecto" | "nueva-tarea" | "nuevo-tipo";
 
 export function TimeEntryForm({
   clientes,
@@ -40,6 +41,7 @@ export function TimeEntryForm({
   valoresIniciales,
   onProyectoCreated,
   onTareaCreated,
+  onTipoCreated,
   onSaved,
   onCancel,
 }: {
@@ -55,6 +57,7 @@ export function TimeEntryForm({
   valoresIniciales?: { fecha: string; horaInicio: string; horaFin: string };
   onProyectoCreated: (proyecto: ProyectoItem) => void;
   onTareaCreated: (tarea: TareaItem) => void;
+  onTipoCreated: (tipo: TipoTrabajoItem) => void;
   onSaved: (registro: RegistroTiempoItem) => void;
   onCancel?: () => void;
 }) {
@@ -178,6 +181,30 @@ export function TimeEntryForm({
     );
   }
 
+  if (subVista === "nuevo-tipo") {
+    return (
+      <div className="space-y-3">
+        <button
+          onClick={() => setSubVista("form")}
+          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        >
+          ← Volver al registro
+        </button>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          Nuevo tipo de trabajo
+        </h3>
+        <TipoTrabajoForm
+          onSaved={(tipo) => {
+            onTipoCreated(tipo);
+            setTipoTrabajoId(tipo.id);
+            setSubVista("form");
+          }}
+          onCancel={() => setSubVista("form")}
+        />
+      </div>
+    );
+  }
+
   if (subVista === "nueva-tarea") {
     return (
       <div className="space-y-3">
@@ -280,7 +307,16 @@ export function TimeEntryForm({
           </Select>
         </div>
         <div>
-          <Label>Tipo de trabajo</Label>
+          <div className="mb-1 flex items-center justify-between">
+            <Label>Tipo de trabajo</Label>
+            <button
+              type="button"
+              onClick={() => setSubVista("nuevo-tipo")}
+              className="flex items-center gap-0.5 text-xs font-medium text-[var(--accent-primary)] hover:underline"
+            >
+              <Plus size={11} /> Nuevo
+            </button>
+          </div>
           <Select
             value={tipoTrabajoId}
             onChange={(e) => setTipoTrabajoId(Number(e.target.value))}

@@ -202,6 +202,7 @@ export default function RegistroPage() {
             valoresIniciales={seleccion ?? undefined}
             onProyectoCreated={(proyecto) => setProyectos((prev) => [...prev, proyecto])}
             onTareaCreated={(tarea) => setTareas((prev) => [...prev, tarea])}
+            onTipoCreated={(tipo) => setTipos((prev) => [...prev, tipo])}
             onSaved={(registro) => {
               setRegistros((prev) => {
                 const exists = prev.some((r) => r.id === registro.id);
