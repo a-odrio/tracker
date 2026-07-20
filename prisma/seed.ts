@@ -29,11 +29,11 @@ async function main() {
   if (tipoTrabajoCount === 0) {
     await prisma.tipoTrabajo.createMany({
       data: [
-        { nombre: "Reunión" },
-        { nombre: "Desarrollo" },
-        { nombre: "Análisis" },
-        { nombre: "Diseño" },
-        { nombre: "Administración" },
+        { nombre: "Reunión", orden: 0 },
+        { nombre: "Desarrollo", orden: 1 },
+        { nombre: "Análisis", orden: 2 },
+        { nombre: "Diseño", orden: 3 },
+        { nombre: "Administración", orden: 4 },
       ],
     });
   }

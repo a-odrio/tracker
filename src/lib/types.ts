@@ -15,6 +15,7 @@ export interface EstadoItem {
 export interface TipoTrabajoItem {
   id: number;
   nombre: string;
+  orden: number;
   activo: boolean;
 }
 

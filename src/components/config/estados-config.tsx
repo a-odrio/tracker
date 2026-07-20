@@ -1,9 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api-client";
 import type { EstadoItem } from "@/lib/types";
 import { ColorSwatchPicker } from "@/components/config/color-swatch-picker";
+import { SortableRow } from "@/components/config/sortable-row";
 import { Button, ErrorText, Input, Section } from "@/components/ui";
 
 export function EstadosConfig({
@@ -42,21 +52,27 @@ export function EstadosConfig({
     }
   }
 
-  async function mover(index: number, direction: -1 | 1) {
-    const target = index + direction;
-    if (target < 0 || target >= ordenados.length) return;
-    const a = ordenados[index];
-    const b = ordenados[target];
-    const [updatedA, updatedB] = await Promise.all([
-      apiPatch<EstadoItem>(`/api/estados/${a.id}`, { orden: b.orden }),
-      apiPatch<EstadoItem>(`/api/estados/${b.id}`, { orden: a.orden }),
-    ]);
-    onChange(
-      estados.map((e) => {
-        if (e.id === updatedA.id) return updatedA;
-        if (e.id === updatedB.id) return updatedB;
-        return e;
-      }),
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = ordenados.findIndex((e) => e.id === active.id);
+    const newIndex = ordenados.findIndex((e) => e.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordenados = arrayMove(ordenados, oldIndex, newIndex);
+    onChange(estados.map((e) => {
+      const nuevoIndex = reordenados.findIndex((r) => r.id === e.id);
+      return nuevoIndex === -1 ? e : { ...e, orden: nuevoIndex };
+    }));
+    await Promise.all(
+      reordenados.map((estado, index) =>
+        estado.orden === index
+          ? Promise.resolve()
+          : apiPatch<EstadoItem>(`/api/estados/${estado.id}`, { orden: index }),
+      ),
     );
   }
 
@@ -65,40 +81,33 @@ export function EstadosConfig({
       <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
         El orden acá define el orden de las columnas en el tablero Kanban.
       </p>
-      <ul className="mb-4 divide-y divide-slate-100 dark:divide-slate-800">
-        {ordenados.map((estado, i) => (
-          <li key={estado.id} className="flex items-center gap-3 py-2">
-            <span
-              className="h-4 w-4 shrink-0 rounded-full"
-              style={{ backgroundColor: estado.color }}
-            />
-            <span className="flex-1 text-sm text-slate-800 dark:text-slate-200">
-              {estado.nombre}
-            </span>
-            <button
-              onClick={() => mover(i, -1)}
-              disabled={i === 0}
-              className="text-slate-400 hover:text-slate-900 disabled:opacity-30 dark:hover:text-slate-100"
-            >
-              ↑
-            </button>
-            <button
-              onClick={() => mover(i, 1)}
-              disabled={i === ordenados.length - 1}
-              className="text-slate-400 hover:text-slate-900 disabled:opacity-30 dark:hover:text-slate-100"
-            >
-              ↓
-            </button>
-            <button
-              onClick={() => eliminar(estado.id)}
-              className="text-slate-400 hover:text-red-600 dark:hover:text-red-400"
-              title="Eliminar"
-            >
-              ×
-            </button>
-          </li>
-        ))}
-      </ul>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext
+          items={ordenados.map((e) => e.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <ul className="mb-4 divide-y divide-slate-100 dark:divide-slate-800">
+            {ordenados.map((estado) => (
+              <SortableRow key={estado.id} id={estado.id}>
+                <span
+                  className="h-4 w-4 shrink-0 rounded-full"
+                  style={{ backgroundColor: estado.color }}
+                />
+                <span className="flex-1 text-sm text-slate-800 dark:text-slate-200">
+                  {estado.nombre}
+                </span>
+                <button
+                  onClick={() => eliminar(estado.id)}
+                  className="text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+                  title="Eliminar"
+                >
+                  ×
+                </button>
+              </SortableRow>
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">

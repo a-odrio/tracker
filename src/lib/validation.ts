@@ -26,6 +26,7 @@ export const estadoSchema = z.object({
 
 export const tipoTrabajoSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio"),
+  orden: z.number().int().optional(),
   activo: z.boolean().optional(),
 });
 
