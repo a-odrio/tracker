@@ -3,15 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, endOfMonth, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
 import { apiGet } from "@/lib/api-client";
-import type { PlanificacionItem, RegistroTiempoItem, TareaItem } from "@/lib/types";
-import { formatDate, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
+import type {
+  ClienteItem,
+  PlanificacionItem,
+  RegistroTiempoItem,
+  TareaItem,
+} from "@/lib/types";
+import { formatDate, sumarMinutosSinSolapar, toDateOnlyISO } from "@/lib/utils";
 import { Button, Section, Select } from "@/components/ui";
 import { BarList, type BarListItem } from "@/components/reports/bar-list";
 import { StatTile } from "@/components/reports/stat-tile";
 import { DailyBars } from "@/components/reports/daily-bars";
 
-function duracionHoras(r: RegistroTiempoItem) {
-  return (timeToMinutes(r.horaFin) - timeToMinutes(r.horaInicio)) / 60;
+function horasSinSolapar(registros: RegistroTiempoItem[]) {
+  return sumarMinutosSinSolapar(registros) / 60;
 }
 
 type Preset = "semana" | "mes" | "30dias";
@@ -20,10 +25,9 @@ export default function ReportesPage() {
   const [preset, setPreset] = useState<Preset>("mes");
   const [desde, setDesde] = useState(toDateOnlyISO(startOfMonth(new Date())));
   const [hasta, setHasta] = useState(toDateOnlyISO(endOfMonth(new Date())));
-  const [agruparClienteProyecto, setAgruparClienteProyecto] = useState<
-    "cliente" | "proyecto"
-  >("proyecto");
+  const [clienteFiltro, setClienteFiltro] = useState<number | "">("");
 
+  const [clientes, setClientes] = useState<ClienteItem[]>([]);
   const [registrosRango, setRegistrosRango] = useState<RegistroTiempoItem[]>([]);
   const [registrosTodos, setRegistrosTodos] = useState<RegistroTiempoItem[]>([]);
   const [tareas, setTareas] = useState<TareaItem[]>([]);
@@ -50,12 +54,14 @@ export default function ReportesPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data refetch on range change
     setLoading(true);
     Promise.all([
+      apiGet<ClienteItem[]>("/api/clientes"),
       apiGet<RegistroTiempoItem[]>(`/api/registros-tiempo?desde=${desde}&hasta=${hasta}`),
       apiGet<RegistroTiempoItem[]>("/api/registros-tiempo"),
       apiGet<TareaItem[]>("/api/tareas"),
       apiGet<PlanificacionItem[]>(`/api/planificacion?desde=${desde}&hasta=${hasta}`),
     ])
-      .then(([rRango, rTodos, t, p]) => {
+      .then(([c, rRango, rTodos, t, p]) => {
+        setClientes(c);
         setRegistrosRango(rRango);
         setRegistrosTodos(rTodos);
         setTareas(t);
@@ -65,10 +71,23 @@ export default function ReportesPage() {
       .catch((e) => setError((e as Error).message));
   }, [desde, hasta]);
 
-  const totalHoras = registrosRango.reduce((s, r) => s + duracionHoras(r), 0);
+  const registrosRangoFiltrados = clienteFiltro
+    ? registrosRango.filter((r) => r.proyecto?.clienteId === clienteFiltro)
+    : registrosRango;
+  const registrosTodosFiltrados = clienteFiltro
+    ? registrosTodos.filter((r) => r.proyecto?.clienteId === clienteFiltro)
+    : registrosTodos;
+  const tareasFiltradas = clienteFiltro
+    ? tareas.filter((t) => t.proyecto?.clienteId === clienteFiltro)
+    : tareas;
+  const planificacionFiltrada = clienteFiltro
+    ? planificacion.filter((p) => p.tarea?.proyecto?.clienteId === clienteFiltro)
+    : planificacion;
 
-  const registrosImprevistos = registrosRango.filter((r) => r.tarea?.imprevista);
-  const horasImprevistas = registrosImprevistos.reduce((s, r) => s + duracionHoras(r), 0);
+  const totalHoras = horasSinSolapar(registrosRangoFiltrados);
+
+  const registrosImprevistos = registrosRangoFiltrados.filter((r) => r.tarea?.imprevista);
+  const horasImprevistas = horasSinSolapar(registrosImprevistos);
 
   const dias = useMemo(() => {
     const inicio = new Date(desde);
@@ -78,84 +97,85 @@ export default function ReportesPage() {
     return Array.from({ length: diffDias }, (_, i) => {
       const fecha = addDays(inicio, i);
       const iso = toDateOnlyISO(fecha);
-      const horas = registrosRango
-        .filter((r) => r.fecha.slice(0, 10) === iso)
-        .reduce((s, r) => s + duracionHoras(r), 0);
+      const horas = horasSinSolapar(
+        registrosRangoFiltrados.filter((r) => r.fecha.slice(0, 10) === iso),
+      );
       return { fecha, horas };
     });
-  }, [desde, hasta, registrosRango]);
+  }, [desde, hasta, registrosRangoFiltrados]);
 
-  const porClienteProyecto = useMemo(() => {
-    const mapa = new Map<string, BarListItem>();
-    for (const r of registrosRango) {
-      const key =
-        agruparClienteProyecto === "cliente"
-          ? `c-${r.proyecto?.clienteId}`
-          : `p-${r.proyectoId}`;
-      const label =
-        agruparClienteProyecto === "cliente"
-          ? (r.proyecto?.cliente?.nombre ?? "—")
-          : (r.proyecto?.nombre ?? "—");
-      const color =
-        agruparClienteProyecto === "cliente"
-          ? (r.proyecto?.cliente?.color ?? "#64748b")
-          : (r.proyecto?.color ?? "#64748b");
-      const existente = mapa.get(key);
-      const horas = duracionHoras(r);
+  const porProyecto = useMemo(() => {
+    const grupos = new Map<
+      string,
+      { label: string; color: string; registros: RegistroTiempoItem[] }
+    >();
+    for (const r of registrosRangoFiltrados) {
+      const key = `p-${r.proyectoId}`;
+      const existente = grupos.get(key);
       if (existente) {
-        existente.value += horas;
+        existente.registros.push(r);
       } else {
-        mapa.set(key, { id: key, label, color, value: horas });
-      }
-    }
-    return [...mapa.values()].sort((a, b) => b.value - a.value);
-  }, [registrosRango, agruparClienteProyecto]);
-
-  const porTipoTrabajo = useMemo(() => {
-    const mapa = new Map<string, BarListItem>();
-    for (const r of registrosRango) {
-      const key = String(r.tipoTrabajoId);
-      const existente = mapa.get(key);
-      const horas = duracionHoras(r);
-      if (existente) {
-        existente.value += horas;
-      } else {
-        mapa.set(key, {
-          id: key,
-          label: r.tipoTrabajo?.nombre ?? "—",
-          color: "#8b5cf6",
-          value: horas,
+        grupos.set(key, {
+          label: r.proyecto?.nombre ?? "—",
+          color: r.proyecto?.color ?? "#64748b",
+          registros: [r],
         });
       }
     }
-    return [...mapa.values()].sort((a, b) => b.value - a.value);
-  }, [registrosRango]);
+    const items: BarListItem[] = [...grupos.entries()].map(([id, g]) => ({
+      id,
+      label: g.label,
+      color: g.color,
+      value: horasSinSolapar(g.registros),
+    }));
+    return items.sort((a, b) => b.value - a.value);
+  }, [registrosRangoFiltrados]);
+
+  const porTipoTrabajo = useMemo(() => {
+    const grupos = new Map<string, { label: string; registros: RegistroTiempoItem[] }>();
+    for (const r of registrosRangoFiltrados) {
+      const key = String(r.tipoTrabajoId);
+      const existente = grupos.get(key);
+      if (existente) {
+        existente.registros.push(r);
+      } else {
+        grupos.set(key, { label: r.tipoTrabajo?.nombre ?? "—", registros: [r] });
+      }
+    }
+    const items: BarListItem[] = [...grupos.entries()].map(([id, g]) => ({
+      id,
+      label: g.label,
+      color: "#8b5cf6",
+      value: horasSinSolapar(g.registros),
+    }));
+    return items.sort((a, b) => b.value - a.value);
+  }, [registrosRangoFiltrados]);
 
   const planificadoVsReal = useMemo(() => {
-    return tareas
+    return tareasFiltradas
       .filter((t) => t.horasEstimadas != null)
       .map((t) => {
-        const horasReales = registrosTodos
-          .filter((r) => r.tareaId === t.id)
-          .reduce((s, r) => s + duracionHoras(r), 0);
+        const horasReales = horasSinSolapar(
+          registrosTodosFiltrados.filter((r) => r.tareaId === t.id),
+        );
         return { tarea: t, estimadas: t.horasEstimadas ?? 0, reales: horasReales };
       })
       .sort(
         (a, b) => Math.abs(b.reales - b.estimadas) - Math.abs(a.reales - a.estimadas),
       );
-  }, [tareas, registrosTodos]);
+  }, [tareasFiltradas, registrosTodosFiltrados]);
 
   const cumplimiento = useMemo(() => {
-    if (planificacion.length === 0) return null;
-    const realizadas = planificacion.filter((p) =>
-      registrosTodos.some((r) => r.tareaId === p.tareaId),
+    if (planificacionFiltrada.length === 0) return null;
+    const realizadas = planificacionFiltrada.filter((p) =>
+      registrosTodosFiltrados.some((r) => r.tareaId === p.tareaId),
     ).length;
     return {
       realizadas,
-      total: planificacion.length,
-      porcentaje: Math.round((realizadas / planificacion.length) * 100),
+      total: planificacionFiltrada.length,
+      porcentaje: Math.round((realizadas / planificacionFiltrada.length) * 100),
     };
-  }, [planificacion, registrosTodos]);
+  }, [planificacionFiltrada, registrosTodosFiltrados]);
 
   if (error) {
     return (
@@ -206,6 +226,24 @@ export default function ReportesPage() {
         </div>
       </div>
 
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-slate-500 dark:text-slate-400">Cliente</span>
+        <Select
+          className="w-44"
+          value={clienteFiltro}
+          onChange={(e) =>
+            setClienteFiltro(e.target.value ? Number(e.target.value) : "")
+          }
+        >
+          <option value="">Todos</option>
+          {clientes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
+        </Select>
+      </div>
+
       {loading ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
       ) : (
@@ -218,7 +256,7 @@ export default function ReportesPage() {
             />
             <StatTile
               label="Registros cargados"
-              value={String(registrosRango.length)}
+              value={String(registrosRangoFiltrados.length)}
             />
             <StatTile
               label="Cumplimiento de planificación"
@@ -252,22 +290,8 @@ export default function ReportesPage() {
           )}
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Section
-              title="Horas por cliente / proyecto"
-              actions={
-                <Select
-                  className="w-32"
-                  value={agruparClienteProyecto}
-                  onChange={(e) =>
-                    setAgruparClienteProyecto(e.target.value as "cliente" | "proyecto")
-                  }
-                >
-                  <option value="cliente">Cliente</option>
-                  <option value="proyecto">Proyecto</option>
-                </Select>
-              }
-            >
-              <BarList items={porClienteProyecto} />
+            <Section title="Horas por proyecto">
+              <BarList items={porProyecto} />
             </Section>
 
             <Section title="Horas por tipo de trabajo">
