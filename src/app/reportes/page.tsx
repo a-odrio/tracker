@@ -67,6 +67,9 @@ export default function ReportesPage() {
 
   const totalHoras = registrosRango.reduce((s, r) => s + duracionHoras(r), 0);
 
+  const registrosImprevistos = registrosRango.filter((r) => r.tarea?.imprevista);
+  const horasImprevistas = registrosImprevistos.reduce((s, r) => s + duracionHoras(r), 0);
+
   const dias = useMemo(() => {
     const inicio = new Date(desde);
     const fin = new Date(hasta);
@@ -207,7 +210,7 @@ export default function ReportesPage() {
         <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <StatTile
               label="Total horas del período"
               value={`${totalHoras.toFixed(1)}h`}
@@ -230,6 +233,15 @@ export default function ReportesPage() {
               label="Promedio diario"
               value={`${dias.length ? (totalHoras / Math.max(dias.filter((d) => d.horas > 0).length, 1)).toFixed(1) : "—"}h`}
               hint="sobre días con carga"
+            />
+            <StatTile
+              label="Horas imprevistas"
+              value={`${horasImprevistas.toFixed(1)}h`}
+              hint={
+                totalHoras > 0
+                  ? `${Math.round((horasImprevistas / totalHoras) * 100)}% del total · ${registrosImprevistos.length} registros`
+                  : "Sin registros en el período"
+              }
             />
           </div>
 
