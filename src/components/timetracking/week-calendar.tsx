@@ -7,6 +7,8 @@ import { formatDate, minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/u
 const HOUR_HEIGHT = 52;
 const HORA_INICIO_DEFAULT = 8;
 const SNAP_MIN = 15;
+/** Los registros ocupan como máximo esta fracción del ancho del día, dejando el resto libre para seleccionar. */
+const ITEM_WIDTH_RATIO = 0.82;
 
 type DragState = { diaISO: string; startMin: number; currentMin: number };
 
@@ -219,8 +221,8 @@ export function WeekCalendar({
                     style={{
                       top: topFor(registro.horaInicio),
                       height: heightFor(registro.horaInicio, registro.horaFin),
-                      left: `calc(${left * 100}% + 2px)`,
-                      width: `calc(${width * 100}% - 4px)`,
+                      left: `calc(${left * ITEM_WIDTH_RATIO * 100}% + 2px)`,
+                      width: `calc(${width * ITEM_WIDTH_RATIO * 100}% - 4px)`,
                       backgroundColor: `${registro.proyecto?.color ?? "#64748b"}33`,
                       borderLeft: `3px solid ${registro.proyecto?.color ?? "#64748b"}`,
                     }}
