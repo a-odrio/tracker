@@ -12,7 +12,7 @@ const PRIORIDAD_ORDEN: Record<Prioridad, number> = {
   BAJA: 3,
 };
 
-type SortKey = "proyecto" | "estado" | "prioridad";
+type SortKey = "proyecto" | "prioridad";
 type SortDir = "asc" | "desc";
 
 function SortHeader({
@@ -81,17 +81,14 @@ export function TaskTable({
           factor * (a.proyecto?.nombre ?? "").localeCompare(b.proyecto?.nombre ?? "")
         );
       }
-      if (sortKey === "estado") {
-        return factor * ((a.estado?.orden ?? 0) - (b.estado?.orden ?? 0));
-      }
       return factor * (PRIORIDAD_ORDEN[a.prioridad] - PRIORIDAD_ORDEN[b.prioridad]);
     });
   }, [tareas, sortKey, sortDir]);
 
   if (tareas.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-        No hay tareas que coincidan con los filtros.
+      <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">
+        Sin tareas en este estado.
       </p>
     );
   }
@@ -105,13 +102,6 @@ export function TaskTable({
             <SortHeader
               label="Proyecto"
               sortKeyValue="proyecto"
-              sortKey={sortKey}
-              sortDir={sortDir}
-              onSort={toggleSort}
-            />
-            <SortHeader
-              label="Estado"
-              sortKeyValue="estado"
               sortKey={sortKey}
               sortDir={sortDir}
               onSort={toggleSort}
@@ -154,17 +144,6 @@ export function TaskTable({
                   />
                   {tarea.proyecto?.nombre}
                 </div>
-              </td>
-              <td className="py-2.5 pr-3">
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
-                  style={{
-                    backgroundColor: `${tarea.estado?.color}22`,
-                    color: tarea.estado?.color,
-                  }}
-                >
-                  {tarea.estado?.nombre}
-                </span>
               </td>
               <td className="py-2.5 pr-3">
                 <span

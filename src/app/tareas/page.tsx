@@ -12,7 +12,7 @@ import type {
 import { PRIORIDAD_LABEL } from "@/lib/utils";
 import { Button, Modal, MultiSelect } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
-import { TaskTable } from "@/components/tasks/task-table";
+import { EstadoTaskGroup } from "@/components/tasks/estado-task-group";
 
 const PRIORIDADES: Prioridad[] = ["URGENTE", "ALTA", "MEDIA", "BAJA"];
 
@@ -26,11 +26,20 @@ export default function TareasPage() {
 
   const [clienteIds, setClienteIds] = useState<number[]>([]);
   const [proyectoIds, setProyectoIds] = useState<number[]>([]);
-  const [estadoIds, setEstadoIds] = useState<number[]>([]);
   const [prioridades, setPrioridades] = useState<Prioridad[]>([]);
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TareaItem | null>(null);
+  const [colapsados, setColapsados] = useState<Set<number>>(new Set());
+
+  function toggleColapsado(estadoId: number) {
+    setColapsados((prev) => {
+      const next = new Set(prev);
+      if (next.has(estadoId)) next.delete(estadoId);
+      else next.add(estadoId);
+      return next;
+    });
+  }
 
   const proyectosFiltrados = clienteIds.length
     ? proyectos.filter((p) => clienteIds.includes(p.clienteId))
@@ -61,11 +70,15 @@ export default function TareasPage() {
         return false;
       }
       if (proyectoIds.length && !proyectoIds.includes(t.proyectoId)) return false;
-      if (estadoIds.length && !estadoIds.includes(t.estadoId)) return false;
       if (prioridades.length && !prioridades.includes(t.prioridad)) return false;
       return true;
     });
-  }, [tareas, clienteIds, proyectoIds, estadoIds, prioridades]);
+  }, [tareas, clienteIds, proyectoIds, prioridades]);
+
+  const estadosOrdenados = useMemo(
+    () => [...estados].sort((a, b) => a.orden - b.orden),
+    [estados],
+  );
 
   async function eliminar(tarea: TareaItem) {
     if (!confirm(`¿Eliminar la tarea "${tarea.nombre}"?`)) return;
@@ -168,13 +181,6 @@ export default function TareasPage() {
         />
         <MultiSelect
           className="w-40"
-          label="Estado"
-          selected={estadoIds}
-          onChange={setEstadoIds}
-          options={estados.map((e) => ({ value: e.id, label: e.nombre }))}
-        />
-        <MultiSelect
-          className="w-40"
           label="Prioridad"
           selected={prioridades}
           onChange={setPrioridades}
@@ -182,20 +188,26 @@ export default function TareasPage() {
         />
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-        {loading ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
-        ) : (
-          <TaskTable
-            tareas={tareasFiltradas}
-            onEdit={(tarea) => {
-              setEditing(tarea);
-              setShowForm(true);
-            }}
-            onDelete={eliminar}
-          />
-        )}
-      </div>
+      {loading ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
+      ) : (
+        <div className="space-y-3">
+          {estadosOrdenados.map((estado) => (
+            <EstadoTaskGroup
+              key={estado.id}
+              estado={estado}
+              tareas={tareasFiltradas.filter((t) => t.estadoId === estado.id)}
+              expanded={!colapsados.has(estado.id)}
+              onToggle={() => toggleColapsado(estado.id)}
+              onEdit={(tarea) => {
+                setEditing(tarea);
+                setShowForm(true);
+              }}
+              onDelete={eliminar}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
