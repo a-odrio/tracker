@@ -22,11 +22,12 @@ model Tema {
 }
 
 model Estado {
-  id     Int     @id @default(autoincrement())
-  nombre String
-  orden  Int     @default(0)
-  color  String
-  tareas Tarea[]
+  id               Int     @id @default(autoincrement())
+  nombre           String
+  orden            Int     @default(0)
+  color            String
+  mostrarEnBacklog Boolean @default(true)
+  tareas           Tarea[]
 }
 
 model TipoTrabajo {

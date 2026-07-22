@@ -27,11 +27,6 @@ export default function PlanificacionPage() {
   const dias = useMemo(() => weekDays(weekAnchor), [weekAnchor]);
   const { start, end } = useMemo(() => weekRange(weekAnchor), [weekAnchor]);
 
-  const ultimoEstadoId = useMemo(() => {
-    if (estados.length === 0) return undefined;
-    return [...estados].sort((a, b) => b.orden - a.orden)[0].id;
-  }, [estados]);
-
   function cargarSemana() {
     setLoading(true);
     apiGet<PlanificacionItem[]>(
@@ -62,7 +57,11 @@ export default function PlanificacionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start.getTime(), end.getTime()]);
 
-  const backlogTareas = tareas.filter((t) => t.estadoId !== ultimoEstadoId);
+  const estadosBacklogIds = useMemo(
+    () => new Set(estados.filter((e) => e.mostrarEnBacklog).map((e) => e.id)),
+    [estados],
+  );
+  const backlogTareas = tareas.filter((t) => estadosBacklogIds.has(t.estadoId));
 
   const diasPlanificadosPorTarea = useMemo(() => {
     const map = new Map<number, number>();

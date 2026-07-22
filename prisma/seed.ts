@@ -20,7 +20,7 @@ async function main() {
         { nombre: "Pendiente", orden: 0, color: "#6b7280" },
         { nombre: "En curso", orden: 1, color: "#3b82f6" },
         { nombre: "En revisión", orden: 2, color: "#f59e0b" },
-        { nombre: "Terminada", orden: 3, color: "#22c55e" },
+        { nombre: "Terminada", orden: 3, color: "#22c55e", mostrarEnBacklog: false },
       ],
     });
   }

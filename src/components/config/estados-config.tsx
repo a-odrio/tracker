@@ -52,6 +52,13 @@ export function EstadosConfig({
     }
   }
 
+  async function toggleMostrarEnBacklog(estado: EstadoItem) {
+    const actualizado = await apiPatch<EstadoItem>(`/api/estados/${estado.id}`, {
+      mostrarEnBacklog: !estado.mostrarEnBacklog,
+    });
+    onChange(estados.map((e) => (e.id === estado.id ? actualizado : e)));
+  }
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -96,6 +103,18 @@ export function EstadosConfig({
                 <span className="flex-1 text-sm text-slate-800 dark:text-slate-200">
                   {estado.nombre}
                 </span>
+                <label
+                  className="flex shrink-0 items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
+                  title="Si está tildado, las tareas en este estado aparecen en el backlog de Planificación semanal"
+                >
+                  <input
+                    type="checkbox"
+                    checked={estado.mostrarEnBacklog}
+                    onChange={() => toggleMostrarEnBacklog(estado)}
+                    className="rounded border-slate-300 dark:border-slate-600"
+                  />
+                  Backlog
+                </label>
                 <button
                   onClick={() => eliminar(estado.id)}
                   className="text-slate-400 hover:text-red-600 dark:hover:text-red-400"

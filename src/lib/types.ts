@@ -10,6 +10,7 @@ export interface EstadoItem {
   nombre: string;
   orden: number;
   color: string;
+  mostrarEnBacklog: boolean;
 }
 
 export interface TipoTrabajoItem {

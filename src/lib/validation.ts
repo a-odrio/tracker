@@ -23,6 +23,7 @@ export const estadoSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio"),
   orden: z.number().int().optional(),
   color: z.string().min(1, "Elegí un color"),
+  mostrarEnBacklog: z.boolean().optional(),
 });
 
 export const tipoTrabajoSchema = z.object({
