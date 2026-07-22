@@ -17,10 +17,16 @@ async function main() {
   if (estadoCount === 0) {
     await prisma.estado.createMany({
       data: [
-        { nombre: "Pendiente", orden: 0, color: "#6b7280" },
+        { nombre: "Pendiente", orden: 0, color: "#6b7280", esInicial: true },
         { nombre: "En curso", orden: 1, color: "#3b82f6" },
         { nombre: "En revisión", orden: 2, color: "#f59e0b" },
-        { nombre: "Terminada", orden: 3, color: "#22c55e", mostrarEnBacklog: false },
+        {
+          nombre: "Terminada",
+          orden: 3,
+          color: "#22c55e",
+          mostrarEnBacklog: false,
+          esFinal: true,
+        },
       ],
     });
   }

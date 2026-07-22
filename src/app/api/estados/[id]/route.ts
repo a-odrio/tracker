@@ -24,6 +24,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const estado = await prisma.estado.findUnique({ where: { id: Number(id) } });
+  if (estado?.esInicial || estado?.esFinal) {
+    return NextResponse.json(
+      { error: "El estado inicial y el final son fijos: no se pueden eliminar." },
+      { status: 400 },
+    );
+  }
   try {
     await prisma.estado.delete({ where: { id: Number(id) } });
     return NextResponse.json({ ok: true });

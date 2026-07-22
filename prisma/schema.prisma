@@ -27,6 +27,10 @@ model Estado {
   orden            Int     @default(0)
   color            String
   mostrarEnBacklog Boolean @default(true)
+  /// Estado fijo de arranque del flujo: siempre el de menor orden, no se puede eliminar ni reordenar.
+  esInicial        Boolean @default(false)
+  /// Estado fijo de cierre del flujo: siempre el de mayor orden, no se puede eliminar ni reordenar.
+  esFinal          Boolean @default(false)
   tareas           Tarea[]
 }
 

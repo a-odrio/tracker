@@ -19,6 +19,8 @@ export const proyectoSchema = z.object({
   orden: z.number().int().optional(),
 });
 
+// esInicial/esFinal quedan afuera del schema a propósito: no son editables por API,
+// son fijos y se asignan solo por migración.
 export const estadoSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio"),
   orden: z.number().int().optional(),

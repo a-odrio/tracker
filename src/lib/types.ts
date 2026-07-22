@@ -11,6 +11,8 @@ export interface EstadoItem {
   orden: number;
   color: string;
   mostrarEnBacklog: boolean;
+  esInicial: boolean;
+  esFinal: boolean;
 }
 
 export interface TipoTrabajoItem {
