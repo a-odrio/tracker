@@ -150,7 +150,10 @@ export function TimeEntryForm({
     }
   }
 
-  const tareasDisponibles = tareas.filter((t) => t.proyectoId === proyectoId);
+  const tareasDisponibles = tareas.filter(
+    (t) =>
+      t.proyectoId === proyectoId && (!t.estado?.esFinal || t.id === registro?.tareaId),
+  );
 
   if (subVista === "nuevo-proyecto") {
     return (
