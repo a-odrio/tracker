@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, ChevronsUpDown, Zap } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsUpDown, Pencil, Trash2, Zap } from "lucide-react";
 import type { Prioridad, TareaItem } from "@/lib/types";
 import { PRIORIDAD_COLOR, PRIORIDAD_LABEL } from "@/lib/utils";
 
@@ -176,19 +176,23 @@ export function TaskTable({
               <td className="py-2.5 pr-3 text-slate-600 dark:text-slate-300">
                 {tarea.horasEstimadas ?? "—"}
               </td>
-              <td className="py-2.5 pr-3 text-right">
-                <button
-                  onClick={() => onEdit(tarea)}
-                  className="mr-3 text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => onDelete(tarea)}
-                  className="text-xs font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                >
-                  Eliminar
-                </button>
+              <td className="py-2.5 pr-3">
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => onEdit(tarea)}
+                    title="Editar"
+                    className="text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-slate-100"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => onDelete(tarea)}
+                    title="Eliminar"
+                    className="text-slate-400 hover:text-red-600 dark:text-slate-500 dark:hover:text-red-400"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
