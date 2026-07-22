@@ -4,7 +4,13 @@ import { useDraggable } from "@dnd-kit/core";
 import type { TareaItem } from "@/lib/types";
 import { PRIORIDAD_COLOR, PRIORIDAD_LABEL } from "@/lib/utils";
 
-export function BacklogItem({ tarea }: { tarea: TareaItem }) {
+export function BacklogItem({
+  tarea,
+  diasPlanificados = 0,
+}: {
+  tarea: TareaItem;
+  diasPlanificados?: number;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `tarea-${tarea.id}`,
   });
@@ -42,6 +48,11 @@ export function BacklogItem({ tarea }: { tarea: TareaItem }) {
       <div className="truncate text-slate-400 dark:text-slate-500">
         {tarea.proyecto?.cliente?.nombre} · {tarea.proyecto?.nombre}
       </div>
+      {diasPlanificados > 0 && (
+        <div className="mt-1 inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+          Planificada en {diasPlanificados} {diasPlanificados === 1 ? "día" : "días"}
+        </div>
+      )}
     </div>
   );
 }

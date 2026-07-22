@@ -4,7 +4,13 @@ import { useDroppable } from "@dnd-kit/core";
 import type { TareaItem } from "@/lib/types";
 import { BacklogItem } from "@/components/planning/backlog-item";
 
-export function BacklogColumn({ tareas }: { tareas: TareaItem[] }) {
+export function BacklogColumn({
+  tareas,
+  diasPlanificadosPorTarea,
+}: {
+  tareas: TareaItem[];
+  diasPlanificadosPorTarea: Map<number, number>;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: "backlog" });
 
   return (
@@ -24,7 +30,11 @@ export function BacklogColumn({ tareas }: { tareas: TareaItem[] }) {
         }`}
       >
         {tareas.map((tarea) => (
-          <BacklogItem key={tarea.id} tarea={tarea} />
+          <BacklogItem
+            key={tarea.id}
+            tarea={tarea}
+            diasPlanificados={diasPlanificadosPorTarea.get(tarea.id) ?? 0}
+          />
         ))}
         {tareas.length === 0 && (
           <p className="p-2 text-center text-xs text-slate-400 dark:text-slate-600">

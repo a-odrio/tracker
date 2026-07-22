@@ -62,11 +62,15 @@ export default function PlanificacionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start.getTime(), end.getTime()]);
 
-  const backlogTareas = tareas.filter(
-    (t) =>
-      t.estadoId !== ultimoEstadoId &&
-      !planificacion.some((p) => p.tareaId === t.id),
-  );
+  const backlogTareas = tareas.filter((t) => t.estadoId !== ultimoEstadoId);
+
+  const diasPlanificadosPorTarea = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const p of planificacion) {
+      map.set(p.tareaId, (map.get(p.tareaId) ?? 0) + 1);
+    }
+    return map;
+  }, [planificacion]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -81,6 +85,10 @@ export default function PlanificacionPage() {
     if (activeId.startsWith("tarea-") && overId.startsWith("dia-")) {
       const tareaId = Number(activeId.replace("tarea-", ""));
       const fecha = overId.replace("dia-", "");
+      const yaAsignada = planificacion.some(
+        (p) => p.tareaId === tareaId && p.fecha.slice(0, 10) === fecha,
+      );
+      if (yaAsignada) return;
       const nuevo = await apiPost<PlanificacionItem>("/api/planificacion", {
         tareaId,
         fecha,
@@ -157,7 +165,10 @@ export default function PlanificacionPage() {
       ) : (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <div className="flex flex-1 gap-4 overflow-x-auto pb-2">
-            <BacklogColumn tareas={backlogTareas} />
+            <BacklogColumn
+              tareas={backlogTareas}
+              diasPlanificadosPorTarea={diasPlanificadosPorTarea}
+            />
             {dias.map((dia) => (
               <DayColumn
                 key={dia.toISOString()}
