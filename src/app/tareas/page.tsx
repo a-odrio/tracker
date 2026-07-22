@@ -196,9 +196,16 @@ export default function TareasPage() {
             <EstadoTaskGroup
               key={estado.id}
               estado={estado}
-              tareas={tareasFiltradas.filter((t) => t.estadoId === estado.id)}
+              tareasDelEstado={tareas.filter((t) => t.estadoId === estado.id)}
+              tareasVisibles={tareasFiltradas.filter((t) => t.estadoId === estado.id)}
               expanded={!colapsados.has(estado.id)}
               onToggle={() => toggleColapsado(estado.id)}
+              onReorder={(nuevasDelEstado) => {
+                setTareas((prev) => [
+                  ...prev.filter((t) => t.estadoId !== estado.id),
+                  ...nuevasDelEstado,
+                ]);
+              }}
               onEdit={(tarea) => {
                 setEditing(tarea);
                 setShowForm(true);

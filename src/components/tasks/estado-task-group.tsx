@@ -6,16 +6,20 @@ import { TaskTable } from "@/components/tasks/task-table";
 
 export function EstadoTaskGroup({
   estado,
-  tareas,
+  tareasDelEstado,
+  tareasVisibles,
   expanded,
   onToggle,
+  onReorder,
   onEdit,
   onDelete,
 }: {
   estado: EstadoItem;
-  tareas: TareaItem[];
+  tareasDelEstado: TareaItem[];
+  tareasVisibles: TareaItem[];
   expanded: boolean;
   onToggle: () => void;
+  onReorder: (tareasDelEstado: TareaItem[]) => void;
   onEdit: (tarea: TareaItem) => void;
   onDelete: (tarea: TareaItem) => void;
 }) {
@@ -38,12 +42,18 @@ export function EstadoTaskGroup({
           {estado.nombre}
         </span>
         <span className="text-xs text-slate-400 dark:text-slate-500">
-          {tareas.length}
+          {tareasVisibles.length}
         </span>
       </button>
       {expanded && (
         <div className="border-t border-slate-100 p-4 dark:border-slate-800">
-          <TaskTable tareas={tareas} onEdit={onEdit} onDelete={onDelete} />
+          <TaskTable
+            tareasDelEstado={tareasDelEstado}
+            tareasVisibles={tareasVisibles}
+            onReorder={onReorder}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
         </div>
       )}
     </div>
