@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       ...(incluirArchivados ? {} : { activo: true }),
     },
     include: { cliente: true },
-    orderBy: { nombre: "asc" },
+    orderBy: [{ clienteId: "asc" }, { orden: "asc" }],
   });
   return NextResponse.json(proyectos);
 }
@@ -22,6 +22,13 @@ export async function POST(request: NextRequest) {
   const parsed = proyectoSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+  if (parsed.data.orden === undefined) {
+    const max = await prisma.proyecto.aggregate({
+      _max: { orden: true },
+      where: { clienteId: parsed.data.clienteId, activo: true },
+    });
+    parsed.data.orden = (max._max.orden ?? -1) + 1;
   }
   const proyecto = await prisma.proyecto.create({ data: parsed.data });
   return NextResponse.json(proyecto, { status: 201 });

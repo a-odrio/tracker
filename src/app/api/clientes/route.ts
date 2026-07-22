@@ -7,7 +7,12 @@ export async function GET(request: NextRequest) {
     request.nextUrl.searchParams.get("incluirArchivados") === "true";
   const clientes = await prisma.cliente.findMany({
     where: incluirArchivados ? {} : { activo: true },
-    include: { proyectos: { where: incluirArchivados ? {} : { activo: true } } },
+    include: {
+      proyectos: {
+        where: incluirArchivados ? {} : { activo: true },
+        orderBy: { orden: "asc" },
+      },
+    },
     orderBy: { nombre: "asc" },
   });
   return NextResponse.json(clientes);

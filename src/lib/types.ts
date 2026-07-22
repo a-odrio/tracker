@@ -36,6 +36,7 @@ export interface ProyectoItem {
   descripcion: string | null;
   color: string;
   activo: boolean;
+  orden: number;
   cliente?: ClienteItem;
 }
 

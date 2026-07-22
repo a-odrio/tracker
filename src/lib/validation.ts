@@ -16,6 +16,7 @@ export const proyectoSchema = z.object({
   descripcion: z.string().optional().nullable(),
   color: z.string().min(1, "Elegí un color"),
   activo: z.boolean().optional(),
+  orden: z.number().int().optional(),
 });
 
 export const estadoSchema = z.object({

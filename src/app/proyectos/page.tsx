@@ -67,6 +67,22 @@ export default function ProyectosPage() {
     );
   }
 
+  function reordenarProyectos(clienteId: number, proyectosActivos: ProyectoItem[]) {
+    setClientes((prev) =>
+      prev.map((c) => {
+        if (c.id !== clienteId) return c;
+        const archivados = (c.proyectos ?? []).filter((p) => !p.activo);
+        return {
+          ...c,
+          proyectos: [
+            ...proyectosActivos.map((p, i) => ({ ...p, orden: i })),
+            ...archivados,
+          ],
+        };
+      }),
+    );
+  }
+
   async function toggleClienteActivo(cliente: ClienteItem) {
     setActionError("");
     try {
@@ -187,6 +203,9 @@ export default function ProyectosPage() {
             onNuevoProyecto={() => setModal({ type: "proyecto-new", clienteId: cliente.id })}
             onEditProyecto={(proyecto) =>
               setModal({ type: "proyecto-edit", clienteId: cliente.id, proyecto })
+            }
+            onReorderProyectos={(proyectosActivos) =>
+              reordenarProyectos(cliente.id, proyectosActivos)
             }
           />
         ))}

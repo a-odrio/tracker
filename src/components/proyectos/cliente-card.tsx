@@ -1,8 +1,98 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Pencil, Plus, Star } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ChevronRight, GripVertical, Pencil, Plus, Star } from "lucide-react";
+import { apiPatch } from "@/lib/api-client";
 import type { ClienteItem, ProyectoItem } from "@/lib/types";
+
+function ProyectoRowContent({
+  proyecto,
+  onEdit,
+  dragHandle,
+}: {
+  proyecto: ProyectoItem;
+  onEdit: () => void;
+  dragHandle?: ReactNode;
+}) {
+  return (
+    <>
+      {dragHandle}
+      <span
+        className="h-2.5 w-2.5 shrink-0 rounded-full"
+        style={{ backgroundColor: proyecto.color }}
+      />
+      <Link
+        href={`/proyectos/${proyecto.id}/kanban`}
+        className={`flex-1 truncate text-sm ${
+          proyecto.activo
+            ? "text-slate-700 dark:text-slate-300"
+            : "text-slate-400 line-through dark:text-slate-600"
+        }`}
+      >
+        {proyecto.nombre}
+      </Link>
+      <button
+        onClick={onEdit}
+        title="Editar proyecto"
+        className="shrink-0 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-200"
+      >
+        <Pencil size={12} />
+      </button>
+    </>
+  );
+}
+
+function SortableProyectoRow({
+  proyecto,
+  onEdit,
+}: {
+  proyecto: ProyectoItem;
+  onEdit: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: proyecto.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+    >
+      <ProyectoRowContent
+        proyecto={proyecto}
+        onEdit={onEdit}
+        dragHandle={
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            title="Arrastrar para reordenar"
+            className="shrink-0 cursor-grab touch-none text-slate-300 hover:text-slate-500 active:cursor-grabbing dark:text-slate-600 dark:hover:text-slate-400"
+          >
+            <GripVertical size={13} />
+          </button>
+        }
+      />
+    </li>
+  );
+}
 
 export function ClienteCard({
   cliente,
@@ -10,14 +100,40 @@ export function ClienteCard({
   onTogglePredeterminado,
   onNuevoProyecto,
   onEditProyecto,
+  onReorderProyectos,
 }: {
   cliente: ClienteItem;
   onEditCliente: () => void;
   onTogglePredeterminado: () => void;
   onNuevoProyecto: () => void;
   onEditProyecto: (proyecto: ProyectoItem) => void;
+  onReorderProyectos: (proyectosActivos: ProyectoItem[]) => void;
 }) {
   const proyectos = cliente.proyectos ?? [];
+  const activos = proyectos.filter((p) => p.activo);
+  const archivados = proyectos.filter((p) => !p.activo);
+  const [mostrarArchivados, setMostrarArchivados] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = activos.findIndex((p) => p.id === active.id);
+    const newIndex = activos.findIndex((p) => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordenados = arrayMove(activos, oldIndex, newIndex);
+    onReorderProyectos(reordenados);
+    await Promise.all(
+      reordenados.map((proyecto, index) =>
+        proyecto.orden === index
+          ? Promise.resolve()
+          : apiPatch(`/api/proyectos/${proyecto.id}`, { orden: index }),
+      ),
+    );
+  }
 
   return (
     <div
@@ -62,41 +178,24 @@ export function ClienteCard({
         </button>
       </div>
 
-      <ul className="mb-2 space-y-0.5">
-        {proyectos.map((proyecto) => (
-          <li
-            key={proyecto.id}
-            className="group flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60"
-          >
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: proyecto.color }}
-            />
-            <Link
-              href={`/proyectos/${proyecto.id}/kanban`}
-              className={`flex-1 truncate text-sm ${
-                proyecto.activo
-                  ? "text-slate-700 dark:text-slate-300"
-                  : "text-slate-400 line-through dark:text-slate-600"
-              }`}
-            >
-              {proyecto.nombre}
-            </Link>
-            <button
-              onClick={() => onEditProyecto(proyecto)}
-              title="Editar proyecto"
-              className="shrink-0 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-200"
-            >
-              <Pencil size={12} />
-            </button>
-          </li>
-        ))}
-        {proyectos.length === 0 && (
-          <li className="px-1.5 py-1 text-xs text-slate-400 dark:text-slate-600">
-            Sin proyectos
-          </li>
-        )}
-      </ul>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={activos.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+          <ul className="mb-2 space-y-0.5">
+            {activos.map((proyecto) => (
+              <SortableProyectoRow
+                key={proyecto.id}
+                proyecto={proyecto}
+                onEdit={() => onEditProyecto(proyecto)}
+              />
+            ))}
+            {activos.length === 0 && (
+              <li className="px-1.5 py-1 text-xs text-slate-400 dark:text-slate-600">
+                Sin proyectos activos
+              </li>
+            )}
+          </ul>
+        </SortableContext>
+      </DndContext>
 
       <button
         onClick={onNuevoProyecto}
@@ -104,6 +203,37 @@ export function ClienteCard({
       >
         <Plus size={13} /> Nuevo proyecto
       </button>
+
+      {archivados.length > 0 && (
+        <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setMostrarArchivados((v) => !v)}
+            className="flex items-center gap-1 px-1.5 text-xs font-medium text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+          >
+            <ChevronRight
+              size={12}
+              className={`transition-transform ${mostrarArchivados ? "rotate-90" : ""}`}
+            />
+            Archivados ({archivados.length})
+          </button>
+          {mostrarArchivados && (
+            <ul className="mt-1 space-y-0.5">
+              {archivados.map((proyecto) => (
+                <li
+                  key={proyecto.id}
+                  className="group flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                >
+                  <ProyectoRowContent
+                    proyecto={proyecto}
+                    onEdit={() => onEditProyecto(proyecto)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }
