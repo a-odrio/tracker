@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -8,6 +8,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
+import { ChevronDown } from "lucide-react";
 
 export function Modal({
   open,
@@ -114,6 +115,100 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
       {...props}
       className={`w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-[var(--accent-primary)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-[var(--accent-primary)] ${props.className ?? ""}`}
     />
+  );
+}
+
+export function MultiSelect<T extends string | number>({
+  label,
+  options,
+  selected,
+  onChange,
+  className = "",
+}: {
+  label: string;
+  options: { value: T; label: string }[];
+  selected: T[];
+  onChange: (values: T[]) => void;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  function toggleValue(value: T) {
+    onChange(
+      selected.includes(value)
+        ? selected.filter((v) => v !== value)
+        : [...selected, value],
+    );
+  }
+
+  const resumen =
+    selected.length === 0
+      ? label
+      : selected.length === 1
+        ? (options.find((o) => o.value === selected[0])?.label ?? label)
+        : `${label} (${selected.length})`;
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex w-full items-center justify-between gap-1.5 rounded-md border bg-white px-2.5 py-1.5 text-left text-sm dark:bg-slate-950 ${
+          selected.length > 0
+            ? "border-[var(--accent-primary)] text-slate-900 dark:text-slate-100"
+            : "border-slate-300 text-slate-500 dark:border-slate-700 dark:text-slate-400"
+        }`}
+      >
+        <span className="truncate">{resumen}</span>
+        <ChevronDown size={14} className="shrink-0 opacity-60" />
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 max-h-64 w-56 overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="mb-1 w-full rounded px-2 py-1 text-left text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              Limpiar selección
+            </button>
+          )}
+          {options.map((o) => (
+            <label
+              key={String(o.value)}
+              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(o.value)}
+                onChange={() => toggleValue(o.value)}
+                className="shrink-0 rounded border-slate-300 dark:border-slate-600"
+              />
+              <span className="truncate text-slate-800 dark:text-slate-200">
+                {o.label}
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

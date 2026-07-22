@@ -1,8 +1,55 @@
 "use client";
 
-import { Zap } from "lucide-react";
-import type { TareaItem } from "@/lib/types";
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, ChevronsUpDown, Zap } from "lucide-react";
+import type { Prioridad, TareaItem } from "@/lib/types";
 import { PRIORIDAD_COLOR, PRIORIDAD_LABEL } from "@/lib/utils";
+
+const PRIORIDAD_ORDEN: Record<Prioridad, number> = {
+  URGENTE: 0,
+  ALTA: 1,
+  MEDIA: 2,
+  BAJA: 3,
+};
+
+type SortKey = "proyecto" | "estado" | "prioridad";
+type SortDir = "asc" | "desc";
+
+function SortHeader({
+  label,
+  sortKeyValue,
+  sortKey,
+  sortDir,
+  onSort,
+}: {
+  label: string;
+  sortKeyValue: SortKey;
+  sortKey: SortKey | null;
+  sortDir: SortDir;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sortKey === sortKeyValue;
+  return (
+    <th className="py-2 pr-3">
+      <button
+        type="button"
+        onClick={() => onSort(sortKeyValue)}
+        className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200"
+      >
+        {label}
+        {active ? (
+          sortDir === "asc" ? (
+            <ChevronUp size={12} />
+          ) : (
+            <ChevronDown size={12} />
+          )
+        ) : (
+          <ChevronsUpDown size={12} className="opacity-40" />
+        )}
+      </button>
+    </th>
+  );
+}
 
 export function TaskTable({
   tareas,
@@ -13,6 +60,34 @@ export function TaskTable({
   onEdit: (tarea: TareaItem) => void;
   onDelete: (tarea: TareaItem) => void;
 }) {
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const tareasOrdenadas = useMemo(() => {
+    if (!sortKey) return tareas;
+    const factor = sortDir === "asc" ? 1 : -1;
+    return [...tareas].sort((a, b) => {
+      if (sortKey === "proyecto") {
+        return (
+          factor * (a.proyecto?.nombre ?? "").localeCompare(b.proyecto?.nombre ?? "")
+        );
+      }
+      if (sortKey === "estado") {
+        return factor * ((a.estado?.orden ?? 0) - (b.estado?.orden ?? 0));
+      }
+      return factor * (PRIORIDAD_ORDEN[a.prioridad] - PRIORIDAD_ORDEN[b.prioridad]);
+    });
+  }, [tareas, sortKey, sortDir]);
+
   if (tareas.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
@@ -27,15 +102,33 @@ export function TaskTable({
         <thead>
           <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
             <th className="py-2 pr-3">Tarea</th>
-            <th className="py-2 pr-3">Cliente / Proyecto</th>
-            <th className="py-2 pr-3">Estado</th>
-            <th className="py-2 pr-3">Prioridad</th>
+            <SortHeader
+              label="Proyecto"
+              sortKeyValue="proyecto"
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={toggleSort}
+            />
+            <SortHeader
+              label="Estado"
+              sortKeyValue="estado"
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={toggleSort}
+            />
+            <SortHeader
+              label="Prioridad"
+              sortKeyValue="prioridad"
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={toggleSort}
+            />
             <th className="py-2 pr-3">Hs. estimadas</th>
             <th className="py-2 pr-3"></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-          {tareas.map((tarea) => (
+          {tareasOrdenadas.map((tarea) => (
             <tr key={tarea.id}>
               <td className="py-2.5 pr-3">
                 <div className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-100">
@@ -55,10 +148,11 @@ export function TaskTable({
               <td className="py-2.5 pr-3 text-slate-600 dark:text-slate-300">
                 <div className="flex items-center gap-1.5">
                   <span
+                    title={tarea.proyecto?.cliente?.nombre}
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: tarea.proyecto?.color }}
+                    style={{ backgroundColor: tarea.proyecto?.cliente?.color }}
                   />
-                  {tarea.proyecto?.cliente?.nombre} · {tarea.proyecto?.nombre}
+                  {tarea.proyecto?.nombre}
                 </div>
               </td>
               <td className="py-2.5 pr-3">

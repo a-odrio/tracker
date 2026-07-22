@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet } from "@/lib/api-client";
 import type {
   ClienteItem,
@@ -10,9 +10,11 @@ import type {
   TareaItem,
 } from "@/lib/types";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
-import { Button, Modal, Select } from "@/components/ui";
+import { Button, Modal, MultiSelect } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
 import { TaskTable } from "@/components/tasks/task-table";
+
+const PRIORIDADES: Prioridad[] = ["URGENTE", "ALTA", "MEDIA", "BAJA"];
 
 export default function TareasPage() {
   const [clientes, setClientes] = useState<ClienteItem[]>([]);
@@ -22,16 +24,16 @@ export default function TareasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [clienteId, setClienteId] = useState<number | "">("");
-  const [proyectoId, setProyectoId] = useState<number | "">("");
-  const [estadoId, setEstadoId] = useState<number | "">("");
-  const [prioridad, setPrioridad] = useState<Prioridad | "">("");
+  const [clienteIds, setClienteIds] = useState<number[]>([]);
+  const [proyectoIds, setProyectoIds] = useState<number[]>([]);
+  const [estadoIds, setEstadoIds] = useState<number[]>([]);
+  const [prioridades, setPrioridades] = useState<Prioridad[]>([]);
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TareaItem | null>(null);
 
-  const proyectosFiltrados = clienteId
-    ? proyectos.filter((p) => p.clienteId === clienteId)
+  const proyectosFiltrados = clienteIds.length
+    ? proyectos.filter((p) => clienteIds.includes(p.clienteId))
     : proyectos;
 
   useEffect(() => {
@@ -39,37 +41,31 @@ export default function TareasPage() {
       apiGet<ClienteItem[]>("/api/clientes"),
       apiGet<ProyectoItem[]>("/api/proyectos"),
       apiGet<EstadoItem[]>("/api/estados"),
+      apiGet<TareaItem[]>("/api/tareas"),
     ])
-      .then(([c, p, e]) => {
+      .then(([c, p, e, t]) => {
         setClientes(c);
         setProyectos(p);
         setEstados(e);
+        setTareas(t);
         const predeterminado = c.find((cl) => cl.predeterminado);
-        if (predeterminado) setClienteId(predeterminado.id);
+        if (predeterminado) setClienteIds([predeterminado.id]);
+        setLoading(false);
       })
       .catch((e) => setError((e as Error).message));
   }, []);
 
-  function cargarTareas() {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (clienteId) params.set("clienteId", String(clienteId));
-    if (proyectoId) params.set("proyectoId", String(proyectoId));
-    if (estadoId) params.set("estadoId", String(estadoId));
-    if (prioridad) params.set("prioridad", prioridad);
-    apiGet<TareaItem[]>(`/api/tareas?${params.toString()}`)
-      .then((data) => {
-        setTareas(data);
-        setLoading(false);
-      })
-      .catch((e) => setError((e as Error).message));
-  }
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data refetch on filter change
-    cargarTareas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clienteId, proyectoId, estadoId, prioridad]);
+  const tareasFiltradas = useMemo(() => {
+    return tareas.filter((t) => {
+      if (clienteIds.length && !clienteIds.includes(t.proyecto?.clienteId ?? -1)) {
+        return false;
+      }
+      if (proyectoIds.length && !proyectoIds.includes(t.proyectoId)) return false;
+      if (estadoIds.length && !estadoIds.includes(t.estadoId)) return false;
+      if (prioridades.length && !prioridades.includes(t.prioridad)) return false;
+      return true;
+    });
+  }, [tareas, clienteIds, proyectoIds, estadoIds, prioridades]);
 
   async function eliminar(tarea: TareaItem) {
     if (!confirm(`¿Eliminar la tarea "${tarea.nombre}"?`)) return;
@@ -144,60 +140,46 @@ export default function TareasPage() {
         />
       </Modal>
 
-      <div className="flex flex-wrap gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-        <Select
-          className="w-44"
-          value={clienteId}
-          onChange={(e) => {
-            setClienteId(e.target.value ? Number(e.target.value) : "");
-            setProyectoId("");
+      <div className="flex flex-wrap items-center gap-2">
+        <MultiSelect
+          className="w-40"
+          label="Cliente"
+          selected={clienteIds}
+          onChange={(values) => {
+            setClienteIds(values);
+            setProyectoIds((prev) =>
+              values.length
+                ? prev.filter((id) =>
+                    proyectos.some(
+                      (p) => p.id === id && values.includes(p.clienteId),
+                    ),
+                  )
+                : prev,
+            );
           }}
-        >
-          <option value="">Todos los clientes</option>
-          {clientes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-            </option>
-          ))}
-        </Select>
-        <Select
-          className="w-44"
-          value={proyectoId}
-          onChange={(e) =>
-            setProyectoId(e.target.value ? Number(e.target.value) : "")
-          }
-        >
-          <option value="">Todos los proyectos</option>
-          {proyectosFiltrados.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre}
-            </option>
-          ))}
-        </Select>
-        <Select
+          options={clientes.map((c) => ({ value: c.id, label: c.nombre }))}
+        />
+        <MultiSelect
           className="w-40"
-          value={estadoId}
-          onChange={(e) => setEstadoId(e.target.value ? Number(e.target.value) : "")}
-        >
-          <option value="">Todos los estados</option>
-          {estados.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.nombre}
-            </option>
-          ))}
-        </Select>
-        <Select
+          label="Proyecto"
+          selected={proyectoIds}
+          onChange={setProyectoIds}
+          options={proyectosFiltrados.map((p) => ({ value: p.id, label: p.nombre }))}
+        />
+        <MultiSelect
           className="w-40"
-          value={prioridad}
-          onChange={(e) => setPrioridad(e.target.value as Prioridad | "")}
-        >
-          <option value="">Todas las prioridades</option>
-          {(["URGENTE", "ALTA", "MEDIA", "BAJA"] as Prioridad[]).map((p) => (
-            <option key={p} value={p}>
-              {PRIORIDAD_LABEL[p]}
-            </option>
-          ))}
-        </Select>
+          label="Estado"
+          selected={estadoIds}
+          onChange={setEstadoIds}
+          options={estados.map((e) => ({ value: e.id, label: e.nombre }))}
+        />
+        <MultiSelect
+          className="w-40"
+          label="Prioridad"
+          selected={prioridades}
+          onChange={setPrioridades}
+          options={PRIORIDADES.map((p) => ({ value: p, label: PRIORIDAD_LABEL[p] }))}
+        />
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -205,7 +187,7 @@ export default function TareasPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
         ) : (
           <TaskTable
-            tareas={tareas}
+            tareas={tareasFiltradas}
             onEdit={(tarea) => {
               setEditing(tarea);
               setShowForm(true);
