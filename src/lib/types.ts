@@ -71,6 +71,18 @@ export interface RegistroTiempoItem {
   tipoTrabajo?: TipoTrabajoItem;
 }
 
+export interface TimerActivoItem {
+  id: number;
+  proyectoId: number;
+  tareaId: number | null;
+  tipoTrabajoId: number;
+  inicio: string;
+  comentarios: string | null;
+  proyecto?: ProyectoItem;
+  tarea?: TareaItem | null;
+  tipoTrabajo?: TipoTrabajoItem;
+}
+
 export interface PlanificacionItem {
   id: number;
   tareaId: number;

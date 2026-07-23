@@ -73,6 +73,13 @@ export const registroTiempoSchema = registroTiempoBase.refine(
 // so partial updates skip the horaFin > horaInicio cross-field check.
 export const registroTiempoUpdateSchema = registroTiempoBase.partial();
 
+export const timerActivoSchema = z.object({
+  proyectoId: z.number().int(),
+  tareaId: z.number().int().optional().nullable(),
+  tipoTrabajoId: z.number().int(),
+  comentarios: z.string().optional().nullable(),
+});
+
 export const planificacionSchema = z.object({
   tareaId: z.number().int(),
   fecha: z.string().min(1, "La fecha es obligatoria"),

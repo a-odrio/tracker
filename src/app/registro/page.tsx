@@ -21,6 +21,7 @@ import {
 } from "@/lib/utils";
 import { Button, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
+import { TimerBar } from "@/components/timetracking/timer-bar";
 import { WeekCalendar } from "@/components/timetracking/week-calendar";
 
 export default function RegistroPage() {
@@ -33,6 +34,7 @@ export default function RegistroPage() {
   const [tema, setTema] = useState<TemaItem | null>(null);
   const [registros, setRegistros] = useState<RegistroTiempoItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [datosListos, setDatosListos] = useState(false);
   const [error, setError] = useState("");
   const [clienteFiltro, setClienteFiltro] = useState<number | "">("");
   const [showForm, setShowForm] = useState(false);
@@ -64,6 +66,7 @@ export default function RegistroPage() {
         setTema(tm);
         const predeterminado = c.find((cl) => cl.predeterminado);
         if (predeterminado) setClienteFiltro(predeterminado.id);
+        setDatosListos(true);
       })
       .catch((e) => setError((e as Error).message));
   }, []);
@@ -130,6 +133,26 @@ export default function RegistroPage() {
           </Button>
         </div>
       </div>
+
+      {datosListos && (
+        <div className="shrink-0">
+          <TimerBar
+            clientes={clientes}
+            proyectos={proyectos}
+            tareas={tareas}
+            tipos={tipos}
+            clienteInicial={clienteFiltro || undefined}
+            onRegistroCreado={(registro) => {
+              setRegistros((prev) => {
+                const exists = prev.some((r) => r.id === registro.id);
+                return exists
+                  ? prev.map((r) => (r.id === registro.id ? registro : r))
+                  : [...prev, registro];
+              });
+            }}
+          />
+        </div>
+      )}
 
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">

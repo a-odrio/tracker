@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { avanzarEstadoSiInicial } from "@/lib/estados-flujo";
 import { registroTiempoSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
@@ -27,25 +28,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  // Regla fija: registrar trabajo en una tarea que sigue en el estado inicial
-  // la hace avanzar automáticamente al siguiente estado.
   if (parsed.data.tareaId) {
-    const tarea = await prisma.tarea.findUnique({
-      where: { id: parsed.data.tareaId },
-      include: { estado: true },
-    });
-    if (tarea?.estado?.esInicial) {
-      const siguiente = await prisma.estado.findFirst({
-        where: { orden: { gt: tarea.estado.orden } },
-        orderBy: { orden: "asc" },
-      });
-      if (siguiente) {
-        await prisma.tarea.update({
-          where: { id: tarea.id },
-          data: { estadoId: siguiente.id },
-        });
-      }
-    }
+    await avanzarEstadoSiInicial(parsed.data.tareaId);
   }
 
   const registro = await prisma.registroTiempo.create({
