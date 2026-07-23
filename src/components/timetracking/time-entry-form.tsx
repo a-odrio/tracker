@@ -26,6 +26,18 @@ import { TipoTrabajoForm } from "@/components/config/tipo-trabajo-form";
 
 type SubVista = "form" | "nuevo-proyecto" | "nueva-tarea" | "nuevo-tipo";
 
+/** Estado a mostrar por defecto para una tarea: el actual, salvo que sea el
+ * estado inicial, en cuyo caso se previsualiza el siguiente (misma regla que
+ * aplica el backend al registrar trabajo por primera vez). */
+function estadoPorDefecto(tarea: TareaItem | undefined, estados: EstadoItem[]): number | "" {
+  if (!tarea) return "";
+  if (!tarea.estado?.esInicial) return tarea.estadoId;
+  const siguiente = estados
+    .filter((e) => e.orden > tarea.estado!.orden)
+    .sort((a, b) => a.orden - b.orden)[0];
+  return siguiente?.id ?? tarea.estadoId;
+}
+
 export function TimeEntryForm({
   clientes,
   proyectos,
@@ -37,7 +49,8 @@ export function TimeEntryForm({
   registro,
   /** Cliente preseleccionado (ej. el filtro general de la pantalla). */
   clienteInicial,
-  /** Fecha/horario preseleccionados (ej. selección arrastrada en el calendario). */
+  /** Fecha/horario/proyecto/tarea/tipo preseleccionados (selección en el
+   * calendario, o valores tomados del timer al iniciarlo/detenerlo). */
   valoresIniciales,
   onProyectoCreated,
   onTareaCreated,
@@ -54,7 +67,14 @@ export function TimeEntryForm({
   registrosDelDia: RegistroTiempoItem[];
   registro?: RegistroTiempoItem;
   clienteInicial?: number;
-  valoresIniciales?: { fecha: string; horaInicio: string; horaFin: string };
+  valoresIniciales?: {
+    fecha?: string;
+    horaInicio?: string;
+    horaFin?: string;
+    proyectoId?: number;
+    tareaId?: number | "";
+    tipoTrabajoId?: number;
+  };
   onProyectoCreated: (proyecto: ProyectoItem) => void;
   onTareaCreated: (tarea: TareaItem) => void;
   onTipoCreated: (tipo: TipoTrabajoItem) => void;
@@ -68,21 +88,28 @@ export function TimeEntryForm({
 
   const clienteIdInicial = registro
     ? (proyectos.find((p) => p.id === registro.proyectoId)?.clienteId ?? "")
-    : (clienteInicial ??
-      clientes.find((c) => c.predeterminado)?.id ??
-      clientes[0]?.id ??
-      "");
+    : valoresIniciales?.proyectoId !== undefined
+      ? (proyectos.find((p) => p.id === valoresIniciales.proyectoId)?.clienteId ?? "")
+      : (clienteInicial ??
+        clientes.find((c) => c.predeterminado)?.id ??
+        clientes[0]?.id ??
+        "");
   const proyectosDelClienteInicial = proyectos.filter(
     (p) => p.clienteId === clienteIdInicial,
   );
 
   const [clienteId, setClienteId] = useState<number | "">(clienteIdInicial);
   const [proyectoId, setProyectoId] = useState(
-    registro?.proyectoId ?? proyectosDelClienteInicial[0]?.id ?? proyectos[0]?.id ?? 0,
+    registro?.proyectoId ??
+      valoresIniciales?.proyectoId ??
+      proyectosDelClienteInicial[0]?.id ??
+      proyectos[0]?.id ??
+      0,
   );
-  const [tareaId, setTareaId] = useState<number | "">(registro?.tareaId ?? "");
+  const tareaIdInicial = registro?.tareaId ?? valoresIniciales?.tareaId ?? "";
+  const [tareaId, setTareaId] = useState<number | "">(tareaIdInicial);
   const [tipoTrabajoId, setTipoTrabajoId] = useState(
-    registro?.tipoTrabajoId ?? tipos[0]?.id ?? 0,
+    registro?.tipoTrabajoId ?? valoresIniciales?.tipoTrabajoId ?? tipos[0]?.id ?? 0,
   );
   const [horaInicio, setHoraInicio] = useState(
     registro?.horaInicio ?? valoresIniciales?.horaInicio ?? "09:00",
@@ -91,6 +118,12 @@ export function TimeEntryForm({
     registro?.horaFin ?? valoresIniciales?.horaFin ?? "10:00",
   );
   const [comentarios, setComentarios] = useState(registro?.comentarios ?? "");
+  const [tareaEstadoId, setTareaEstadoId] = useState<number | "">(() =>
+    estadoPorDefecto(
+      tareas.find((t) => t.id === tareaIdInicial),
+      estados,
+    ),
+  );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -103,8 +136,13 @@ export function TimeEntryForm({
     const disponibles = proyectos.filter((p) => p.clienteId === id);
     if (!disponibles.some((p) => p.id === proyectoId)) {
       setProyectoId(disponibles[0]?.id ?? 0);
-      setTareaId("");
+      cambiarTarea("");
     }
+  }
+
+  function cambiarTarea(id: number | "") {
+    setTareaId(id);
+    setTareaEstadoId(estadoPorDefecto(tareas.find((t) => t.id === id), estados));
   }
 
   const solapa = useMemo(() => {
@@ -131,6 +169,7 @@ export function TimeEntryForm({
       horaInicio,
       horaFin,
       comentarios: comentarios || null,
+      tareaEstadoId: tareaId && tareaEstadoId ? Number(tareaEstadoId) : undefined,
     };
     try {
       const resultado = registro
@@ -154,6 +193,7 @@ export function TimeEntryForm({
     (t) =>
       t.proyectoId === proyectoId && (!t.estado?.esFinal || t.id === registro?.tareaId),
   );
+  const estadosOrdenados = [...estados].sort((a, b) => a.orden - b.orden);
 
   if (subVista === "nuevo-proyecto") {
     return (
@@ -175,7 +215,7 @@ export function TimeEntryForm({
             onProyectoCreated(proyecto);
             setClienteId(proyecto.clienteId);
             setProyectoId(proyecto.id);
-            setTareaId("");
+            cambiarTarea("");
             setSubVista("form");
           }}
           onCancel={() => setSubVista("form")}
@@ -231,7 +271,7 @@ export function TimeEntryForm({
               proyectos.find((p) => p.id === tarea.proyectoId)?.clienteId ?? clienteId,
             );
             setProyectoId(tarea.proyectoId);
-            setTareaId(tarea.id);
+            cambiarTarea(tarea.id);
             setSubVista("form");
           }}
           onCancel={() => setSubVista("form")}
@@ -275,7 +315,7 @@ export function TimeEntryForm({
             value={proyectoId}
             onChange={(e) => {
               setProyectoId(Number(e.target.value));
-              setTareaId("");
+              cambiarTarea("");
             }}
           >
             {proyectosFiltrados.map((p) => (
@@ -299,7 +339,7 @@ export function TimeEntryForm({
           </div>
           <Select
             value={tareaId}
-            onChange={(e) => setTareaId(e.target.value ? Number(e.target.value) : "")}
+            onChange={(e) => cambiarTarea(e.target.value ? Number(e.target.value) : "")}
           >
             <option value="">Sin tarea específica</option>
             {tareasDisponibles.map((t) => (
@@ -331,6 +371,21 @@ export function TimeEntryForm({
             ))}
           </Select>
         </div>
+        {tareaId && (
+          <div>
+            <Label>Estado de la tarea</Label>
+            <Select
+              value={tareaEstadoId}
+              onChange={(e) => setTareaEstadoId(Number(e.target.value))}
+            >
+              {estadosOrdenados.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.nombre}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
         <div>
           <Label>Hora inicio</Label>
           <Input

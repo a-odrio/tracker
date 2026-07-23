@@ -1,17 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Play, Square, X } from "lucide-react";
+import { CalendarPlus, Play, Plus, Square, X } from "lucide-react";
 import { apiDelete, apiGet, apiPost } from "@/lib/api-client";
 import type {
   ClienteItem,
+  EstadoItem,
   ProyectoItem,
-  RegistroTiempoItem,
   TareaItem,
   TimerActivoItem,
   TipoTrabajoItem,
 } from "@/lib/types";
+import { minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
 import { Button, ErrorText, Select } from "@/components/ui";
+import { ProyectoForm } from "@/components/proyectos/proyecto-form";
+import { TaskForm } from "@/components/tasks/task-form";
+
+type SubVista = "form" | "nuevo-proyecto" | "nueva-tarea";
+
+export type SeedRegistro = {
+  proyectoId?: number;
+  tareaId?: number | "";
+  tipoTrabajoId?: number;
+  fecha?: string;
+  horaInicio?: string;
+  horaFin?: string;
+};
 
 function formatElapsed(ms: number) {
   const totalSeg = Math.max(0, Math.floor(ms / 1000));
@@ -21,21 +35,45 @@ function formatElapsed(ms: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+/** Calcula fecha/horaInicio/horaFin para el registro que deja un timer al
+ * detenerse, con una duración mínima de 1 minuto y recorte a 23:59 si llegó
+ * a cruzar la medianoche (RegistroTiempo no soporta abarcar dos días). */
+function horasParaDetener(inicio: Date, fin: Date) {
+  const mismoDia = inicio.toDateString() === fin.toDateString();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const horaInicio = `${pad(inicio.getHours())}:${pad(inicio.getMinutes())}`;
+  let horaFin = mismoDia ? `${pad(fin.getHours())}:${pad(fin.getMinutes())}` : "23:59";
+  if (timeToMinutes(horaFin) <= timeToMinutes(horaInicio)) {
+    horaFin = minutesToTime(Math.min(timeToMinutes(horaInicio) + 1, 23 * 60 + 59));
+  }
+  return { fecha: toDateOnlyISO(inicio), horaInicio, horaFin };
+}
+
 export function TimerBar({
   clientes,
   proyectos,
   tareas,
   tipos,
+  estados,
+  colorPrincipal,
   clienteInicial,
-  onRegistroCreado,
+  onProyectoCreated,
+  onTareaCreated,
+  onAbrirRegistro,
 }: {
   clientes: ClienteItem[];
   proyectos: ProyectoItem[];
   tareas: TareaItem[];
   tipos: TipoTrabajoItem[];
+  estados: EstadoItem[];
+  colorPrincipal: string;
   clienteInicial?: number;
-  onRegistroCreado: (registro: RegistroTiempoItem) => void;
+  onProyectoCreated: (proyecto: ProyectoItem) => void;
+  onTareaCreated: (tarea: TareaItem) => void;
+  /** Abre el formulario de registro manual (nuevo o para revisar lo que dejó el timer). */
+  onAbrirRegistro: (seed: SeedRegistro) => void;
 }) {
+  const [subVista, setSubVista] = useState<SubVista>("form");
   const [timer, setTimer] = useState<TimerActivoItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
@@ -95,12 +133,24 @@ export function TimerBar({
   }
 
   async function detener() {
+    if (!timer) return;
     setError("");
     setStopping(true);
     try {
-      const registro = await apiPost<RegistroTiempoItem>("/api/timer/detener", {});
+      const { fecha, horaInicio, horaFin } = horasParaDetener(
+        new Date(timer.inicio),
+        new Date(),
+      );
+      await apiDelete("/api/timer");
       setTimer(null);
-      onRegistroCreado(registro);
+      onAbrirRegistro({
+        proyectoId: timer.proyectoId,
+        tareaId: timer.tareaId ?? "",
+        tipoTrabajoId: timer.tipoTrabajoId,
+        fecha,
+        horaInicio,
+        horaFin,
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -117,6 +167,67 @@ export function TimerBar({
   if (loading) {
     return (
       <div className="h-[60px] rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />
+    );
+  }
+
+  if (subVista === "nuevo-proyecto") {
+    return (
+      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+        <button
+          onClick={() => setSubVista("form")}
+          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        >
+          ← Volver
+        </button>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          Nuevo proyecto
+        </h3>
+        <ProyectoForm
+          colorPrincipal={colorPrincipal}
+          clientes={clientes}
+          clienteId={clienteId || undefined}
+          onSaved={(proyecto) => {
+            onProyectoCreated(proyecto);
+            setClienteId(proyecto.clienteId);
+            setProyectoId(proyecto.id);
+            setTareaId("");
+            setSubVista("form");
+          }}
+          onCancel={() => setSubVista("form")}
+        />
+      </div>
+    );
+  }
+
+  if (subVista === "nueva-tarea") {
+    return (
+      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+        <button
+          onClick={() => setSubVista("form")}
+          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        >
+          ← Volver
+        </button>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          Nueva tarea
+        </h3>
+        <TaskForm
+          clientes={clientes}
+          proyectos={proyectos}
+          estados={estados}
+          defaultProyectoId={proyectoId}
+          onSaved={(tarea) => {
+            onTareaCreated(tarea);
+            setClienteId(
+              proyectos.find((p) => p.id === tarea.proyectoId)?.clienteId ?? clienteId,
+            );
+            setProyectoId(tarea.proyectoId);
+            setTareaId(tarea.id);
+            setSubVista("form");
+          }}
+          onCancel={() => setSubVista("form")}
+        />
+      </div>
     );
   }
 
@@ -140,8 +251,13 @@ export function TimerBar({
         <div className="font-mono text-lg tabular-nums text-slate-900 dark:text-slate-100">
           {formatElapsed(elapsedMs)}
         </div>
-        <Button onClick={detener} disabled={stopping}>
-          <Square size={14} /> Detener
+        <Button
+          onClick={detener}
+          disabled={stopping}
+          title="Detener y revisar el registro"
+          className="px-2"
+        >
+          <Square size={14} />
         </Button>
         <button
           onClick={descartar}
@@ -150,6 +266,20 @@ export function TimerBar({
         >
           <X size={16} />
         </button>
+        <button
+          onClick={() =>
+            onAbrirRegistro({
+              proyectoId: timer.proyectoId,
+              tareaId: timer.tareaId ?? "",
+              tipoTrabajoId: timer.tipoTrabajoId,
+            })
+          }
+          title="Nuevo registro manual"
+          className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+        >
+          <CalendarPlus size={18} />
+        </button>
+        <ErrorText>{error}</ErrorText>
       </div>
     );
   }
@@ -171,7 +301,17 @@ export function TimerBar({
         </Select>
       </div>
       <div>
-        <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Proyecto</label>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <label className="text-xs text-slate-500 dark:text-slate-400">Proyecto</label>
+          <button
+            type="button"
+            onClick={() => setSubVista("nuevo-proyecto")}
+            title="Nuevo proyecto"
+            className="text-[var(--accent-primary)] hover:opacity-70"
+          >
+            <Plus size={12} />
+          </button>
+        </div>
         <Select
           className="w-40"
           value={proyectoId}
@@ -188,7 +328,18 @@ export function TimerBar({
         </Select>
       </div>
       <div>
-        <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Tarea</label>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <label className="text-xs text-slate-500 dark:text-slate-400">Tarea</label>
+          <button
+            type="button"
+            onClick={() => setSubVista("nueva-tarea")}
+            disabled={!proyectoId}
+            title="Nueva tarea"
+            className="text-[var(--accent-primary)] hover:opacity-70 disabled:opacity-40"
+          >
+            <Plus size={12} />
+          </button>
+        </div>
         <Select
           className="w-40"
           value={tareaId}
@@ -218,9 +369,22 @@ export function TimerBar({
           ))}
         </Select>
       </div>
-      <Button onClick={iniciar} disabled={starting || !proyectoId || !tipoTrabajoId}>
-        <Play size={14} /> Iniciar
+      <Button
+        onClick={iniciar}
+        disabled={starting || !proyectoId || !tipoTrabajoId}
+        title="Iniciar timer"
+        className="px-2"
+      >
+        <Play size={14} />
       </Button>
+      <button
+        onClick={() => onAbrirRegistro({ proyectoId, tareaId, tipoTrabajoId })}
+        disabled={!proyectoId}
+        title="Nuevo registro manual"
+        className="shrink-0 text-slate-400 hover:text-slate-700 disabled:opacity-40 dark:hover:text-slate-200"
+      >
+        <CalendarPlus size={20} />
+      </button>
       <ErrorText>{error}</ErrorText>
     </div>
   );

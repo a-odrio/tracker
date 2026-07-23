@@ -40,9 +40,12 @@ export default function RegistroPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<RegistroTiempoItem | null>(null);
   const [seleccion, setSeleccion] = useState<{
-    fecha: string;
-    horaInicio: string;
-    horaFin: string;
+    fecha?: string;
+    horaInicio?: string;
+    horaFin?: string;
+    proyectoId?: number;
+    tareaId?: number | "";
+    tipoTrabajoId?: number;
   } | null>(null);
 
   const dias = useMemo(() => weekDays(weekAnchor), [weekAnchor]);
@@ -134,21 +137,22 @@ export default function RegistroPage() {
         </div>
       </div>
 
-      {datosListos && (
+      {datosListos && tema && (
         <div className="shrink-0">
           <TimerBar
             clientes={clientes}
             proyectos={proyectos}
             tareas={tareas}
             tipos={tipos}
+            estados={estados}
+            colorPrincipal={tema.colorPrincipal}
             clienteInicial={clienteFiltro || undefined}
-            onRegistroCreado={(registro) => {
-              setRegistros((prev) => {
-                const exists = prev.some((r) => r.id === registro.id);
-                return exists
-                  ? prev.map((r) => (r.id === registro.id ? registro : r))
-                  : [...prev, registro];
-              });
+            onProyectoCreated={(proyecto) => setProyectos((prev) => [...prev, proyecto])}
+            onTareaCreated={(tarea) => setTareas((prev) => [...prev, tarea])}
+            onAbrirRegistro={(seed) => {
+              setEditing(null);
+              setSeleccion(seed);
+              setShowForm(true);
             }}
           />
         </div>
@@ -176,16 +180,6 @@ export default function RegistroPage() {
             <span className="font-medium">{totalHoras.toFixed(2)}h</span>
           </span>
         </div>
-        <Button
-          disabled={proyectos.length === 0}
-          onClick={() => {
-            setEditing(null);
-            setSeleccion(null);
-            setShowForm(true);
-          }}
-        >
-          + Nuevo registro
-        </Button>
       </div>
 
       {proyectos.length === 0 && (
@@ -210,7 +204,7 @@ export default function RegistroPage() {
             key={
               editing?.id ??
               (seleccion
-                ? `sel-${seleccion.fecha}-${seleccion.horaInicio}-${seleccion.horaFin}`
+                ? `sel-${seleccion.fecha}-${seleccion.horaInicio}-${seleccion.horaFin}-${seleccion.proyectoId}-${seleccion.tareaId}-${seleccion.tipoTrabajoId}`
                 : "new")
             }
             clientes={clientes}
@@ -233,6 +227,12 @@ export default function RegistroPage() {
                   ? prev.map((r) => (r.id === registro.id ? registro : r))
                   : [...prev, registro];
               });
+              if (registro.tarea) {
+                const tareaActualizada = registro.tarea;
+                setTareas((prev) =>
+                  prev.map((t) => (t.id === tareaActualizada.id ? { ...t, ...tareaActualizada } : t)),
+                );
+              }
               setEditing(null);
               setSeleccion(null);
               setShowForm(false);

@@ -59,6 +59,9 @@ const registroTiempoBase = z.object({
   horaInicio: z.string().regex(/^\d{2}:\d{2}$/, "Formato de hora inválido"),
   horaFin: z.string().regex(/^\d{2}:\d{2}$/, "Formato de hora inválido"),
   comentarios: z.string().optional().nullable(),
+  /** Estado a aplicar a `tareaId` al guardar (elegido a mano en el form). Si no
+   * se manda, se usa la regla automática de avance desde el estado inicial. */
+  tareaEstadoId: z.number().int().optional().nullable(),
 });
 
 export const registroTiempoSchema = registroTiempoBase.refine(

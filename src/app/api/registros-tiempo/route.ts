@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { avanzarEstadoSiInicial } from "@/lib/estados-flujo";
 import { registroTiempoSchema } from "@/lib/validation";
 
+const tareaInclude = { include: { estado: true } } as const;
+
 export async function GET(request: NextRequest) {
   const desde = request.nextUrl.searchParams.get("desde");
   const hasta = request.nextUrl.searchParams.get("hasta");
@@ -13,7 +15,7 @@ export async function GET(request: NextRequest) {
         : {},
     include: {
       proyecto: { include: { cliente: true } },
-      tarea: true,
+      tarea: tareaInclude,
       tipoTrabajo: true,
     },
     orderBy: [{ fecha: "asc" }, { horaInicio: "asc" }],
@@ -29,7 +31,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (parsed.data.tareaId) {
-    await avanzarEstadoSiInicial(parsed.data.tareaId);
+    if (parsed.data.tareaEstadoId) {
+      await prisma.tarea.update({
+        where: { id: parsed.data.tareaId },
+        data: { estadoId: parsed.data.tareaEstadoId },
+      });
+    } else {
+      await avanzarEstadoSiInicial(parsed.data.tareaId);
+    }
   }
 
   const registro = await prisma.registroTiempo.create({
@@ -44,7 +53,7 @@ export async function POST(request: NextRequest) {
     },
     include: {
       proyecto: { include: { cliente: true } },
-      tarea: true,
+      tarea: tareaInclude,
       tipoTrabajo: true,
     },
   });
