@@ -146,6 +146,7 @@ function TareaArbolNodo({
   const [agregando, setAgregando] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState("");
   const [creando, setCreando] = useState(false);
+  const tieneHijos = hijosDirectos(tarea.id, tareas).length > 0;
 
   async function crearSubtarea() {
     if (!nombreNuevo.trim()) return;
@@ -180,14 +181,18 @@ function TareaArbolNodo({
         >
           <GripVertical size={13} />
         </button>
-        <button
-          type="button"
-          onClick={() => setExpandido((v) => !v)}
-          title={expandido ? "Contraer" : "Expandir"}
-          className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-        >
-          <ChevronRight size={13} className={`transition-transform ${expandido ? "rotate-90" : ""}`} />
-        </button>
+        {tieneHijos ? (
+          <button
+            type="button"
+            onClick={() => setExpandido((v) => !v)}
+            title={expandido ? "Contraer" : "Expandir"}
+            className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+          >
+            <ChevronRight size={13} className={`transition-transform ${expandido ? "rotate-90" : ""}`} />
+          </button>
+        ) : (
+          <span className="inline-block w-[13px] shrink-0" />
+        )}
         <span
           className="h-2.5 w-2.5 shrink-0 rounded-full"
           style={{ backgroundColor: tarea.color ?? tarea.estado?.color ?? "#64748b" }}
