@@ -239,7 +239,7 @@ function TareaArbolNodo({
             setExpandido(true);
           }}
           title="Agregar subtarea"
-          className="shrink-0 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-[var(--accent-primary)] dark:text-slate-600"
+          className="shrink-0 text-slate-400 hover:text-[var(--accent-primary)] dark:text-slate-500"
         >
           <Plus size={13} />
         </button>
@@ -247,7 +247,7 @@ function TareaArbolNodo({
           <Link
             href={`/proyectos/${tarea.id}/kanban`}
             title="Ver Kanban"
-            className="shrink-0 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-200"
+            className="shrink-0 text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-slate-100"
           >
             <Kanban size={13} />
           </Link>
@@ -255,7 +255,7 @@ function TareaArbolNodo({
         <button
           onClick={() => onEditar(tarea)}
           title="Editar"
-          className="shrink-0 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-200"
+          className="shrink-0 text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-slate-100"
         >
           <Pencil size={12} />
         </button>
