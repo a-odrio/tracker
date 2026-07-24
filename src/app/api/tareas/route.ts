@@ -4,23 +4,23 @@ import { tareaSchema } from "@/lib/validation";
 import type { Prisma } from "@/generated/prisma/client";
 import type { Prioridad } from "@/generated/prisma/enums";
 
+const include = { cliente: true, parent: true, estado: true } as const;
+
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const clienteId = params.get("clienteId");
-  const proyectoId = params.get("proyectoId");
+  const parentId = params.get("parentId");
   const estadoId = params.get("estadoId");
   const prioridad = params.get("prioridad");
 
   const where: Prisma.TareaWhereInput = {};
-  if (proyectoId) where.proyectoId = Number(proyectoId);
-  if (clienteId) where.proyecto = { clienteId: Number(clienteId) };
+  if (parentId) where.parentId = parentId === "null" ? null : Number(parentId);
   if (estadoId) where.estadoId = Number(estadoId);
   if (prioridad) where.prioridad = prioridad as Prioridad;
 
   const tareas = await prisma.tarea.findMany({
     where,
-    include: { proyecto: { include: { cliente: true } }, estado: true },
-    orderBy: [{ estadoId: "asc" }, { orden: "asc" }],
+    include,
+    orderBy: [{ estadoId: "asc" }, { ordenEstado: "asc" }],
   });
   return NextResponse.json(tareas);
 }
@@ -34,13 +34,23 @@ export async function POST(request: NextRequest) {
   if (parsed.data.orden === undefined) {
     const max = await prisma.tarea.aggregate({
       _max: { orden: true },
-      where: { estadoId: parsed.data.estadoId },
+      where:
+        parsed.data.parentId != null
+          ? { parentId: parsed.data.parentId }
+          : { parentId: null, clienteId: parsed.data.clienteId },
     });
     parsed.data.orden = (max._max.orden ?? -1) + 1;
   }
+  if (parsed.data.ordenEstado === undefined) {
+    const max = await prisma.tarea.aggregate({
+      _max: { ordenEstado: true },
+      where: { estadoId: parsed.data.estadoId },
+    });
+    parsed.data.ordenEstado = (max._max.ordenEstado ?? -1) + 1;
+  }
   const tarea = await prisma.tarea.create({
     data: parsed.data,
-    include: { proyecto: { include: { cliente: true } }, estado: true },
+    include,
   });
   return NextResponse.json(tarea, { status: 201 });
 }

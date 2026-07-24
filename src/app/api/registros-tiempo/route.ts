@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { avanzarEstadoSiInicial } from "@/lib/estados-flujo";
 import { registroTiempoSchema } from "@/lib/validation";
 
-const tareaInclude = { include: { estado: true } } as const;
+const tareaInclude = { include: { cliente: true, estado: true } } as const;
 
 export async function GET(request: NextRequest) {
   const desde = request.nextUrl.searchParams.get("desde");
@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
         ? { fecha: { gte: new Date(desde), lte: new Date(hasta) } }
         : {},
     include: {
-      proyecto: { include: { cliente: true } },
       tarea: tareaInclude,
       tipoTrabajo: true,
     },
@@ -30,29 +29,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  if (parsed.data.tareaId) {
-    if (parsed.data.tareaEstadoId) {
-      await prisma.tarea.update({
-        where: { id: parsed.data.tareaId },
-        data: { estadoId: parsed.data.tareaEstadoId },
-      });
-    } else {
-      await avanzarEstadoSiInicial(parsed.data.tareaId);
-    }
+  if (parsed.data.tareaEstadoId) {
+    await prisma.tarea.update({
+      where: { id: parsed.data.tareaId },
+      data: { estadoId: parsed.data.tareaEstadoId },
+    });
+  } else {
+    await avanzarEstadoSiInicial(parsed.data.tareaId);
   }
 
   const registro = await prisma.registroTiempo.create({
     data: {
       fecha: new Date(parsed.data.fecha),
-      proyectoId: parsed.data.proyectoId,
-      tareaId: parsed.data.tareaId ?? null,
+      tareaId: parsed.data.tareaId,
       tipoTrabajoId: parsed.data.tipoTrabajoId,
       horaInicio: parsed.data.horaInicio,
       horaFin: parsed.data.horaFin,
       comentarios: parsed.data.comentarios || null,
     },
     include: {
-      proyecto: { include: { cliente: true } },
       tarea: tareaInclude,
       tipoTrabajo: true,
     },

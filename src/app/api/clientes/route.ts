@@ -8,8 +8,8 @@ export async function GET(request: NextRequest) {
   const clientes = await prisma.cliente.findMany({
     where: incluirArchivados ? {} : { activo: true },
     include: {
-      proyectos: {
-        where: incluirArchivados ? {} : { activo: true },
+      tareas: {
+        where: incluirArchivados ? { parentId: null } : { parentId: null, activo: true },
         orderBy: { orden: "asc" },
       },
     },

@@ -33,8 +33,7 @@ export async function PATCH(
       ...(fecha !== undefined && { fecha: new Date(fecha) }),
     },
     include: {
-      proyecto: { include: { cliente: true } },
-      tarea: { include: { estado: true } },
+      tarea: { include: { cliente: true, estado: true } },
       tipoTrabajo: true,
     },
   });

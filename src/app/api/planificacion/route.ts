@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
         ? { fecha: { gte: new Date(desde), lte: new Date(hasta) } }
         : {},
     include: {
-      tarea: { include: { proyecto: { include: { cliente: true } }, estado: true } },
+      tarea: { include: { cliente: true, estado: true } },
     },
     orderBy: { fecha: "asc" },
   });
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       horasPlanificadas: parsed.data.horasPlanificadas,
     },
     include: {
-      tarea: { include: { proyecto: { include: { cliente: true } }, estado: true } },
+      tarea: { include: { cliente: true, estado: true } },
     },
   });
   return NextResponse.json(item, { status: 201 });

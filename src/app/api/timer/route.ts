@@ -3,8 +3,7 @@ import { prisma } from "@/lib/db";
 import { timerActivoSchema } from "@/lib/validation";
 
 const include = {
-  proyecto: { include: { cliente: true } },
-  tarea: { include: { estado: true } },
+  tarea: { include: { cliente: true, estado: true } },
   tipoTrabajo: true,
 } as const;
 
@@ -28,8 +27,7 @@ export async function POST(request: NextRequest) {
   }
   const timer = await prisma.timerActivo.create({
     data: {
-      proyectoId: parsed.data.proyectoId,
-      tareaId: parsed.data.tareaId ?? null,
+      tareaId: parsed.data.tareaId,
       tipoTrabajoId: parsed.data.tipoTrabajoId,
       comentarios: parsed.data.comentarios || null,
     },

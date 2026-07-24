@@ -22,7 +22,7 @@ export async function PATCH(
       }),
     },
     include: {
-      tarea: { include: { proyecto: { include: { cliente: true } }, estado: true } },
+      tarea: { include: { cliente: true, estado: true } },
     },
   });
   return NextResponse.json(item);
