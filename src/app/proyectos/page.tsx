@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
 import type { ClienteItem, EstadoItem, TareaItem, TemaItem } from "@/lib/types";
-import { Button, ErrorText, Modal } from "@/components/ui";
-import { ClienteCard } from "@/components/proyectos/cliente-card";
+import { padreRecienCerrado } from "@/lib/tarea-tree";
+import { Button, ErrorText, InlineBanner, Modal } from "@/components/ui";
+import { ClienteSeccion } from "@/components/proyectos/cliente-seccion";
 import { ClienteForm } from "@/components/proyectos/cliente-form";
 import { TaskForm } from "@/components/tasks/task-form";
 
@@ -13,7 +14,7 @@ type ModalState =
   | { type: "cliente-new" }
   | { type: "cliente-edit"; cliente: ClienteItem }
   | { type: "proyecto-new"; clienteId: number }
-  | { type: "proyecto-edit"; clienteId: number; proyecto: TareaItem }
+  | { type: "tarea-edit"; tarea: TareaItem }
   | null;
 
 export default function ProyectosPage() {
@@ -25,6 +26,7 @@ export default function ProyectosPage() {
   const [error, setError] = useState("");
   const [modal, setModal] = useState<ModalState>(null);
   const [actionError, setActionError] = useState("");
+  const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -51,43 +53,34 @@ export default function ProyectosPage() {
   function upsertCliente(cliente: ClienteItem) {
     setClientes((prev) => {
       const existe = prev.some((c) => c.id === cliente.id);
-      return existe
-        ? prev.map((c) => (c.id === cliente.id ? { ...cliente, tareas: c.tareas } : c))
-        : [...prev, { ...cliente, tareas: [] }];
+      return existe ? prev.map((c) => (c.id === cliente.id ? cliente : c)) : [...prev, cliente];
     });
   }
 
-  function upsertTareaRaiz(clienteId: number, tarea: TareaItem) {
+  /** Sincroniza cualquier tarea creada/editada/reordenada (raíz o subtarea,
+   * cualquier profundidad) y detecta si con ese cambio un padre se quedó
+   * sin subtareas abiertas. */
+  function onTareaGuardada(tarea: TareaItem) {
     setTareas((prev) => {
       const existe = prev.some((t) => t.id === tarea.id);
-      return existe ? prev.map((t) => (t.id === tarea.id ? tarea : t)) : [...prev, tarea];
+      const nuevas = existe
+        ? prev.map((t) => (t.id === tarea.id ? tarea : t))
+        : [...prev, tarea];
+      const padre = padreRecienCerrado(tarea.id, prev, nuevas);
+      if (padre) setPadreParaCerrar(padre);
+      return nuevas;
     });
-    setClientes((prev) =>
-      prev.map((c) => {
-        if (c.id !== clienteId) return c;
-        const raices = c.tareas ?? [];
-        const existe = raices.some((t) => t.id === tarea.id);
-        return {
-          ...c,
-          tareas: existe
-            ? raices.map((t) => (t.id === tarea.id ? tarea : t))
-            : [...raices, tarea],
-        };
-      }),
-    );
   }
 
-  function reordenarTareasRaiz(clienteId: number, raicesActivas: TareaItem[]) {
-    setClientes((prev) =>
-      prev.map((c) => {
-        if (c.id !== clienteId) return c;
-        const archivadas = (c.tareas ?? []).filter((t) => !t.activo);
-        return {
-          ...c,
-          tareas: [...raicesActivas.map((t, i) => ({ ...t, orden: i })), ...archivadas],
-        };
-      }),
-    );
+  async function finalizarPadre() {
+    if (!padreParaCerrar) return;
+    const estadoFinal = estados.find((e) => e.esFinal);
+    if (!estadoFinal) return;
+    const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
+      estadoId: estadoFinal.id,
+    });
+    setTareas((prev) => prev.map((t) => (t.id === actualizado.id ? actualizado : t)));
+    setPadreParaCerrar(null);
   }
 
   async function toggleClienteActivo(cliente: ClienteItem) {
@@ -110,7 +103,7 @@ export default function ProyectosPage() {
       });
       setClientes((prev) =>
         prev.map((c) => {
-          if (c.id === actualizado.id) return { ...actualizado, tareas: c.tareas };
+          if (c.id === actualizado.id) return actualizado;
           return c.predeterminado ? { ...c, predeterminado: false } : c;
         }),
       );
@@ -130,31 +123,24 @@ export default function ProyectosPage() {
     }
   }
 
-  async function toggleTareaActiva(clienteId: number, tarea: TareaItem) {
+  async function toggleTareaActiva(tarea: TareaItem) {
     setActionError("");
     try {
       const actualizado = await apiPatch<TareaItem>(`/api/tareas/${tarea.id}`, {
         activo: !tarea.activo,
       });
-      upsertTareaRaiz(clienteId, actualizado);
+      onTareaGuardada(actualizado);
       cerrarModal();
     } catch (e) {
       setActionError((e as Error).message);
     }
   }
 
-  async function eliminarTareaRaiz(clienteId: number, tarea: TareaItem) {
+  async function eliminarTarea(tarea: TareaItem) {
     setActionError("");
     try {
       await apiDelete(`/api/tareas/${tarea.id}`);
       setTareas((prev) => prev.filter((t) => t.id !== tarea.id));
-      setClientes((prev) =>
-        prev.map((c) =>
-          c.id === clienteId
-            ? { ...c, tareas: (c.tareas ?? []).filter((t) => t.id !== tarea.id) }
-            : c,
-        ),
-      );
       cerrarModal();
     } catch (e) {
       setActionError((e as Error).message);
@@ -180,12 +166,12 @@ export default function ProyectosPage() {
         ? "Editar cliente"
         : modal?.type === "proyecto-new"
           ? "Nuevo proyecto"
-          : modal?.type === "proyecto-edit"
-            ? "Editar proyecto"
+          : modal?.type === "tarea-edit"
+            ? "Editar tarea"
             : undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
           Proyectos
@@ -201,20 +187,28 @@ export default function ProyectosPage() {
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {padreParaCerrar && (
+        <InlineBanner
+          text={`Se completaron todas las subtareas de "${padreParaCerrar.nombre}".`}
+          actionLabel="Finalizar tarea"
+          onAction={finalizarPadre}
+          onDismiss={() => setPadreParaCerrar(null)}
+        />
+      )}
+
+      <div className="space-y-4">
         {clientes.map((cliente) => (
-          <ClienteCard
+          <ClienteSeccion
             key={cliente.id}
             cliente={cliente}
+            tareas={tareas}
+            estados={estados}
             onEditCliente={() => setModal({ type: "cliente-edit", cliente })}
             onTogglePredeterminado={() => toggleClientePredeterminado(cliente)}
             onNuevoProyecto={() => setModal({ type: "proyecto-new", clienteId: cliente.id })}
-            onEditProyecto={(proyecto) =>
-              setModal({ type: "proyecto-edit", clienteId: cliente.id, proyecto })
-            }
-            onReorderProyectos={(raicesActivas) =>
-              reordenarTareasRaiz(cliente.id, raicesActivas)
-            }
+            onEditar={(tarea) => setModal({ type: "tarea-edit", tarea })}
+            onTareaCreated={onTareaGuardada}
+            onTareaSincronizada={onTareaGuardada}
           />
         ))}
       </div>
@@ -267,33 +261,32 @@ export default function ProyectosPage() {
             tareas={tareas}
             estados={estados}
             parentId={null}
-            onSaved={(proyecto) => upsertTareaRaiz(modal.clienteId, proyecto)}
+            onSaved={onTareaGuardada}
             onDone={cerrarModal}
             onCancel={cerrarModal}
           />
         )}
 
-        {modal?.type === "proyecto-edit" && (
+        {modal?.type === "tarea-edit" && (
           <>
             <TaskForm
               colorPrincipal={tema.colorPrincipal}
-              clienteId={modal.clienteId}
               tareas={tareas}
               estados={estados}
-              tarea={modal.proyecto}
-              onSaved={(proyecto) => upsertTareaRaiz(modal.clienteId, proyecto)}
+              tarea={modal.tarea}
+              onSaved={onTareaGuardada}
               onDone={cerrarModal}
               onCancel={cerrarModal}
             />
             <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-3 dark:border-slate-800">
               <button
-                onClick={() => toggleTareaActiva(modal.clienteId, modal.proyecto)}
+                onClick={() => toggleTareaActiva(modal.tarea)}
                 className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
               >
-                {modal.proyecto.activo ? "Archivar" : "Activar"}
+                {modal.tarea.activo ? "Archivar" : "Activar"}
               </button>
               <button
-                onClick={() => eliminarTareaRaiz(modal.clienteId, modal.proyecto)}
+                onClick={() => eliminarTarea(modal.tarea)}
                 className="text-xs font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
               >
                 Eliminar
