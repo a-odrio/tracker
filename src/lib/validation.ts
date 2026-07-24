@@ -10,15 +10,6 @@ export const clienteSchema = z.object({
   predeterminado: z.boolean().optional(),
 });
 
-export const proyectoSchema = z.object({
-  clienteId: z.number().int(),
-  nombre: z.string().min(1, "El nombre es obligatorio"),
-  descripcion: z.string().optional().nullable(),
-  color: z.string().min(1, "Elegí un color"),
-  activo: z.boolean().optional(),
-  orden: z.number().int().optional(),
-});
-
 // esInicial/esFinal quedan afuera del schema a propósito: no son editables por API,
 // son fijos y se asignan solo por migración.
 export const estadoSchema = z.object({
@@ -40,21 +31,40 @@ export const temaSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Formato hex inválido (ej: #3b82f6)"),
 });
 
-export const tareaSchema = z.object({
-  proyectoId: z.number().int(),
+// Modelo unificado: una tarea sin parentId es una raíz (antes "Proyecto") y
+// requiere clienteId + color; con parentId es una subtarea a cualquier
+// profundidad y no lleva clienteId/color propios (los resuelve subiendo al
+// ancestro raíz, ver src/lib/tarea-tree.ts).
+const tareaBase = z.object({
+  parentId: z.number().int().optional().nullable(),
+  clienteId: z.number().int().optional().nullable(),
+  color: z.string().optional().nullable(),
   nombre: z.string().min(1, "El nombre es obligatorio"),
   descripcion: z.string().optional().nullable(),
+  activo: z.boolean().optional(),
   prioridad: prioridadEnum.optional(),
   estadoId: z.number().int(),
   horasEstimadas: z.number().nonnegative().optional().nullable(),
   imprevista: z.boolean().optional(),
   orden: z.number().int().optional(),
+  ordenEstado: z.number().int().optional(),
 });
+
+export const tareaSchema = tareaBase.refine(
+  (data) => data.parentId != null || (!!data.clienteId && !!data.color),
+  {
+    message: "Una tarea raíz (sin padre) necesita cliente y color",
+    path: ["clienteId"],
+  },
+);
+
+// Used for PATCH: .partial() cannot be applied to a schema with .refine(),
+// so partial updates skip the raíz-needs-cliente-y-color cross-field check.
+export const tareaUpdateSchema = tareaBase.partial();
 
 const registroTiempoBase = z.object({
   fecha: z.string().min(1, "La fecha es obligatoria"),
-  proyectoId: z.number().int(),
-  tareaId: z.number().int().optional().nullable(),
+  tareaId: z.number().int(),
   tipoTrabajoId: z.number().int(),
   horaInicio: z.string().regex(/^\d{2}:\d{2}$/, "Formato de hora inválido"),
   horaFin: z.string().regex(/^\d{2}:\d{2}$/, "Formato de hora inválido"),
@@ -77,8 +87,7 @@ export const registroTiempoSchema = registroTiempoBase.refine(
 export const registroTiempoUpdateSchema = registroTiempoBase.partial();
 
 export const timerActivoSchema = z.object({
-  proyectoId: z.number().int(),
-  tareaId: z.number().int().optional().nullable(),
+  tareaId: z.number().int(),
   tipoTrabajoId: z.number().int(),
   comentarios: z.string().optional().nullable(),
 });

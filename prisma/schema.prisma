@@ -44,44 +44,47 @@ model TipoTrabajo {
 }
 
 model Cliente {
-  id             Int        @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   nombre         String
   descripcion    String?
   color          String
-  activo         Boolean    @default(true)
-  predeterminado Boolean    @default(false)
-  createdAt      DateTime   @default(now())
-  proyectos      Proyecto[]
+  activo         Boolean  @default(true)
+  predeterminado Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  /// Tareas raíz (parentId null) de este cliente — lo que antes era Proyecto.
+  tareas         Tarea[]
 }
 
-model Proyecto {
-  id          Int              @id @default(autoincrement())
-  clienteId   Int
-  cliente     Cliente          @relation(fields: [clienteId], references: [id])
-  nombre      String
-  descripcion String?
-  color       String
-  activo      Boolean          @default(true)
-  orden       Int              @default(0)
-  createdAt   DateTime         @default(now())
-  tareas      Tarea[]
-  registros   RegistroTiempo[]
-  timers      TimerActivo[]
-}
-
+/// Modelo unificado: una Tarea sin parentId es lo que antes era un Proyecto
+/// ("raíz"); con parentId es una subtarea, a cualquier profundidad.
 model Tarea {
   id             Int                   @id @default(autoincrement())
-  proyectoId     Int
-  proyecto       Proyecto              @relation(fields: [proyectoId], references: [id])
+  parentId       Int?
+  parent         Tarea?                @relation("TareaJerarquia", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  hijos          Tarea[]               @relation("TareaJerarquia")
+
+  /// Solo tiene sentido en la raíz (parentId null); los hijos resuelven
+  /// cliente/color subiendo hasta su ancestro raíz.
+  clienteId      Int?
+  cliente        Cliente?              @relation(fields: [clienteId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  color          String?
+
   nombre         String
   descripcion    String?
+  /// Archivado. Antes solo existía en Proyecto; ahora aplica a cualquier nivel.
+  activo         Boolean               @default(true)
   prioridad      Prioridad             @default(MEDIA)
+  /// Toda tarea, raíz o no, siempre tiene un estado real (regla fija del flujo).
   estadoId       Int
   estado         Estado                @relation(fields: [estadoId], references: [id])
   horasEstimadas Float?
   imprevista     Boolean               @default(false)
+  /// Orden entre hermanos: por parentId, o por clienteId si es raíz.
   orden          Int                   @default(0)
+  /// Orden dentro de una columna de Kanban / grupo por estado (por estadoId).
+  ordenEstado    Int                   @default(0)
   createdAt      DateTime              @default(now())
+
   registros      RegistroTiempo[]
   planificacion  PlanificacionSemana[]
   timers         TimerActivo[]
@@ -90,10 +93,8 @@ model Tarea {
 model RegistroTiempo {
   id            Int         @id @default(autoincrement())
   fecha         DateTime
-  proyectoId    Int
-  proyecto      Proyecto    @relation(fields: [proyectoId], references: [id])
-  tareaId       Int?
-  tarea         Tarea?      @relation(fields: [tareaId], references: [id])
+  tareaId       Int
+  tarea         Tarea       @relation(fields: [tareaId], references: [id])
   tipoTrabajoId Int
   tipoTrabajo   TipoTrabajo @relation(fields: [tipoTrabajoId], references: [id])
   horaInicio    String
@@ -106,10 +107,8 @@ model RegistroTiempo {
 /// al detenerlo se convierte en un RegistroTiempo y se borra.
 model TimerActivo {
   id            Int         @id @default(autoincrement())
-  proyectoId    Int
-  proyecto      Proyecto    @relation(fields: [proyectoId], references: [id])
-  tareaId       Int?
-  tarea         Tarea?      @relation(fields: [tareaId], references: [id])
+  tareaId       Int
+  tarea         Tarea       @relation(fields: [tareaId], references: [id])
   tipoTrabajoId Int
   tipoTrabajo   TipoTrabajo @relation(fields: [tipoTrabajoId], references: [id])
   inicio        DateTime    @default(now())

@@ -29,57 +29,53 @@ export interface ClienteItem {
   color: string;
   activo: boolean;
   predeterminado: boolean;
-  proyectos?: ProyectoItem[];
+  /** Tareas raíz (parentId null) de este cliente. */
+  tareas?: TareaItem[];
 }
 
-export interface ProyectoItem {
-  id: number;
-  clienteId: number;
-  nombre: string;
-  descripcion: string | null;
-  color: string;
-  activo: boolean;
-  orden: number;
-  cliente?: ClienteItem;
-}
-
+/**
+ * Modelo unificado: una tarea sin parentId es lo que antes era un Proyecto
+ * ("raíz", con clienteId/color propios); con parentId es una subtarea, a
+ * cualquier profundidad, que resuelve cliente/color subiendo al ancestro raíz.
+ */
 export interface TareaItem {
   id: number;
-  proyectoId: number;
+  parentId: number | null;
+  clienteId: number | null;
+  color: string | null;
   nombre: string;
   descripcion: string | null;
+  activo: boolean;
   prioridad: Prioridad;
   estadoId: number;
   horasEstimadas: number | null;
   imprevista: boolean;
   orden: number;
-  proyecto?: ProyectoItem;
+  ordenEstado: number;
+  cliente?: ClienteItem | null;
+  parent?: TareaItem | null;
   estado?: EstadoItem;
 }
 
 export interface RegistroTiempoItem {
   id: number;
   fecha: string;
-  proyectoId: number;
-  tareaId: number | null;
+  tareaId: number;
   tipoTrabajoId: number;
   horaInicio: string;
   horaFin: string;
   comentarios: string | null;
-  proyecto?: ProyectoItem;
-  tarea?: TareaItem | null;
+  tarea?: TareaItem;
   tipoTrabajo?: TipoTrabajoItem;
 }
 
 export interface TimerActivoItem {
   id: number;
-  proyectoId: number;
-  tareaId: number | null;
+  tareaId: number;
   tipoTrabajoId: number;
   inicio: string;
   comentarios: string | null;
-  proyecto?: ProyectoItem;
-  tarea?: TareaItem | null;
+  tarea?: TareaItem;
   tipoTrabajo?: TipoTrabajoItem;
 }
 
