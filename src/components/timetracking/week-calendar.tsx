@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { RegistroTiempoItem } from "@/lib/types";
+import type { RegistroTiempoItem, TareaItem } from "@/lib/types";
+import { raizDe } from "@/lib/tarea-tree";
 import { formatDate, minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
 
 const HOUR_HEIGHT = 52;
@@ -46,11 +47,14 @@ function layoutDia(items: RegistroTiempoItem[]) {
 export function WeekCalendar({
   dias,
   registros,
+  tareas,
   onEdit,
   onSelect,
 }: {
   dias: Date[];
   registros: RegistroTiempoItem[];
+  /** Lista plana completa, para resolver la raíz/color de cada registro. */
+  tareas: TareaItem[];
   onEdit: (registro: RegistroTiempoItem) => void;
   /** Se dispara al seleccionar un período libre arrastrando en el calendario. */
   onSelect?: (fecha: string, horaInicio: string, horaFin: string) => void;
@@ -214,26 +218,32 @@ export function WeekCalendar({
                     {minutesToTime(Math.max(dragPreview.startMin, dragPreview.currentMin))}
                   </div>
                 )}
-                {items.map(({ registro, left, width }) => (
-                  <button
-                    key={registro.id}
-                    onClick={() => onEdit(registro)}
-                    style={{
-                      top: topFor(registro.horaInicio),
-                      height: heightFor(registro.horaInicio, registro.horaFin),
-                      left: `calc(${left * ITEM_WIDTH_RATIO * 100}% + 2px)`,
-                      width: `calc(${width * ITEM_WIDTH_RATIO * 100}% - 4px)`,
-                      backgroundColor: `${registro.proyecto?.color ?? "#64748b"}33`,
-                      borderLeft: `3px solid ${registro.proyecto?.color ?? "#64748b"}`,
-                    }}
-                    className="absolute overflow-hidden rounded-r-md px-1.5 py-0.5 text-left text-[10px] leading-tight text-slate-800 hover:z-10 hover:ring-1 hover:ring-slate-400 dark:text-slate-100"
-                  >
-                    <div className="truncate font-medium">
-                      {registro.tarea?.nombre ?? "(sin tarea)"}
-                    </div>
-                    <div className="truncate opacity-70">{registro.proyecto?.nombre}</div>
-                  </button>
-                ))}
+                {items.map(({ registro, left, width }) => {
+                  const raiz = registro.tarea ? raizDe(registro.tarea, tareas) : undefined;
+                  const color = raiz?.color ?? "#64748b";
+                  return (
+                    <button
+                      key={registro.id}
+                      onClick={() => onEdit(registro)}
+                      style={{
+                        top: topFor(registro.horaInicio),
+                        height: heightFor(registro.horaInicio, registro.horaFin),
+                        left: `calc(${left * ITEM_WIDTH_RATIO * 100}% + 2px)`,
+                        width: `calc(${width * ITEM_WIDTH_RATIO * 100}% - 4px)`,
+                        backgroundColor: `${color}33`,
+                        borderLeft: `3px solid ${color}`,
+                      }}
+                      className="absolute overflow-hidden rounded-r-md px-1.5 py-0.5 text-left text-[10px] leading-tight text-slate-800 hover:z-10 hover:ring-1 hover:ring-slate-400 dark:text-slate-100"
+                    >
+                      <div className="truncate font-medium">
+                        {registro.tarea && registro.tarea.id !== raiz?.id
+                          ? registro.tarea.nombre
+                          : "(tarea general)"}
+                      </div>
+                      <div className="truncate opacity-70">{raiz?.nombre}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

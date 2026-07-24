@@ -54,6 +54,40 @@ export function Modal({
   );
 }
 
+/** Banner de aviso con una acción principal y un descarte, para eventos que
+ * requieren revisión del usuario sin forzar nada automáticamente (ej: "se
+ * completaron todas las subtareas de X, ¿finalizarla también?"). */
+export function InlineBanner({
+  text,
+  actionLabel,
+  onAction,
+  onDismiss,
+}: {
+  text: string;
+  actionLabel: string;
+  onAction: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
+      <span className="flex-1">{text}</span>
+      <button
+        onClick={onAction}
+        className="shrink-0 font-medium underline decoration-amber-400 underline-offset-2 hover:decoration-2"
+      >
+        {actionLabel}
+      </button>
+      <button
+        onClick={onDismiss}
+        title="Descartar"
+        className="shrink-0 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 export function Section({
   title,
   children,

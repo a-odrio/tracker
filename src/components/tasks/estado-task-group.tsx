@@ -5,6 +5,7 @@ import type { EstadoItem, TareaItem } from "@/lib/types";
 import { TaskTable } from "@/components/tasks/task-table";
 
 export function EstadoTaskGroup({
+  tareas,
   estado,
   tareasDelEstado,
   tareasVisibles,
@@ -14,6 +15,8 @@ export function EstadoTaskGroup({
   onEdit,
   onDelete,
 }: {
+  /** Lista plana completa (todos los estados), para resolver la raíz/cliente de cada fila. */
+  tareas: TareaItem[];
   estado: EstadoItem;
   tareasDelEstado: TareaItem[];
   tareasVisibles: TareaItem[];
@@ -48,6 +51,7 @@ export function EstadoTaskGroup({
       {expanded && (
         <div className="border-t border-slate-100 p-4 dark:border-slate-800">
           <TaskTable
+            tareas={tareas}
             tareasDelEstado={tareasDelEstado}
             tareasVisibles={tareasVisibles}
             onReorder={onReorder}

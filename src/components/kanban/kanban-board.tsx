@@ -14,27 +14,32 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { apiGet, apiPatch } from "@/lib/api-client";
-import type { EstadoItem, ProyectoItem, TareaItem } from "@/lib/types";
+import type { EstadoItem, TareaItem } from "@/lib/types";
+import { hojasDe, padreRecienCerrado } from "@/lib/tarea-tree";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
 import { TaskCard } from "@/components/kanban/task-card";
 import { TaskForm } from "@/components/tasks/task-form";
-import { Button, Modal } from "@/components/ui";
+import { Button, InlineBanner, Modal } from "@/components/ui";
 
 type Columns = Record<number, TareaItem[]>;
 
 export function KanbanBoard({
-  proyecto,
+  raiz,
   estados,
+  colorPrincipal,
 }: {
-  proyecto: ProyectoItem;
+  raiz: TareaItem;
   estados: EstadoItem[];
+  colorPrincipal: string;
 }) {
+  const [todasLasTareas, setTodasLasTareas] = useState<TareaItem[]>([]);
   const [columns, setColumnsState] = useState<Columns>({});
   const columnsRef = useRef<Columns>({});
   const [loading, setLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<TareaItem | null>(null);
   const [editing, setEditing] = useState<TareaItem | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
 
   const ordenados = [...estados].sort((a, b) => a.orden - b.orden);
 
@@ -47,18 +52,26 @@ export function KanbanBoard({
     setColumnsState(next);
   }
 
+  function recalcularColumnas(tareas: TareaItem[]) {
+    const raizActual = tareas.find((t) => t.id === raiz.id) ?? raiz;
+    const tarjetas = hojasDe(raizActual, tareas);
+    const grouped: Columns = {};
+    for (const estado of estados) grouped[estado.id] = [];
+    for (const tarjeta of tarjetas) (grouped[tarjeta.estadoId] ??= []).push(tarjeta);
+    for (const estadoId of Object.keys(grouped)) {
+      grouped[Number(estadoId)].sort((a, b) => a.ordenEstado - b.ordenEstado);
+    }
+    setColumns(grouped);
+  }
+
   useEffect(() => {
-    apiGet<TareaItem[]>(`/api/tareas?proyectoId=${proyecto.id}`).then((tareas) => {
-      const grouped: Columns = {};
-      for (const estado of estados) grouped[estado.id] = [];
-      for (const tarea of tareas) {
-        (grouped[tarea.estadoId] ??= []).push(tarea);
-      }
-      setColumns(grouped);
+    apiGet<TareaItem[]>("/api/tareas").then((tareas) => {
+      setTodasLasTareas(tareas);
+      recalcularColumnas(tareas);
       setLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proyecto.id]);
+  }, [raiz.id]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -135,16 +148,46 @@ export function KanbanBoard({
 
     const finalColumns = columnsRef.current;
     const afectados = new Set([activeContainer, overContainer]);
+    const cambios: { tarea: TareaItem; estadoId: number; index: number }[] = [];
     for (const estadoId of afectados) {
       const items = finalColumns[estadoId] ?? [];
-      await Promise.all(
-        items.map((tarea, index) =>
-          tarea.estadoId === estadoId && tarea.orden === index
-            ? Promise.resolve()
-            : apiPatch(`/api/tareas/${tarea.id}`, { estadoId, orden: index }),
-        ),
-      );
+      items.forEach((tarea, index) => {
+        if (tarea.estadoId !== estadoId || tarea.ordenEstado !== index) {
+          cambios.push({ tarea, estadoId, index });
+        }
+      });
     }
+    if (cambios.length === 0) return;
+
+    const actualizados = await Promise.all(
+      cambios.map(({ tarea, estadoId, index }) =>
+        apiPatch<TareaItem>(`/api/tareas/${tarea.id}`, { estadoId, ordenEstado: index }),
+      ),
+    );
+    const tareasDespues = todasLasTareas.map(
+      (t) => actualizados.find((a) => a.id === t.id) ?? t,
+    );
+    setTodasLasTareas(tareasDespues);
+    for (const actualizado of actualizados) {
+      const padre = padreRecienCerrado(actualizado.id, todasLasTareas, tareasDespues);
+      if (padre) {
+        setPadreParaCerrar(padre);
+        break;
+      }
+    }
+  }
+
+  async function finalizarPadre() {
+    if (!padreParaCerrar) return;
+    const estadoFinal = estados.find((e) => e.esFinal);
+    if (!estadoFinal) return;
+    const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
+      estadoId: estadoFinal.id,
+    });
+    const nuevas = todasLasTareas.map((t) => (t.id === actualizado.id ? actualizado : t));
+    setTodasLasTareas(nuevas);
+    recalcularColumnas(nuevas);
+    setPadreParaCerrar(null);
   }
 
   if (loading) {
@@ -156,7 +199,7 @@ export function KanbanBoard({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-            {proyecto.cliente?.nombre} · {proyecto.nombre}
+            {raiz.cliente?.nombre} · {raiz.nombre}
           </h1>
         </div>
         <Button
@@ -169,6 +212,15 @@ export function KanbanBoard({
         </Button>
       </div>
 
+      {padreParaCerrar && (
+        <InlineBanner
+          text={`Se completaron todas las subtareas de "${padreParaCerrar.nombre}".`}
+          actionLabel="Finalizar tarea"
+          onAction={finalizarPadre}
+          onDismiss={() => setPadreParaCerrar(null)}
+        />
+      )}
+
       <Modal
         open={showForm || !!editing}
         onClose={() => {
@@ -179,19 +231,22 @@ export function KanbanBoard({
       >
         <TaskForm
           key={editing?.id ?? "new"}
-          proyectos={[proyecto]}
+          tareas={todasLasTareas}
           estados={ordenados}
+          colorPrincipal={colorPrincipal}
           tarea={editing ?? undefined}
-          defaultProyectoId={proyecto.id}
+          parentId={raiz.id}
           onSaved={(tarea) => {
-            setColumns((prev) => {
-              const next: Columns = {};
-              for (const estadoId of Object.keys(prev).map(Number)) {
-                next[estadoId] = prev[estadoId].filter((t) => t.id !== tarea.id);
-              }
-              (next[tarea.estadoId] ??= []).push(tarea);
-              return next;
-            });
+            const antes = todasLasTareas;
+            const nuevas = antes.some((t) => t.id === tarea.id)
+              ? antes.map((t) => (t.id === tarea.id ? tarea : t))
+              : [...antes, tarea];
+            setTodasLasTareas(nuevas);
+            recalcularColumnas(nuevas);
+            const padre = padreRecienCerrado(tarea.id, antes, nuevas);
+            if (padre) setPadreParaCerrar(padre);
+          }}
+          onDone={() => {
             setEditing(null);
             setShowForm(false);
           }}

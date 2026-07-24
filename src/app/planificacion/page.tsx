@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api-client";
 import type { EstadoItem, PlanificacionItem, TareaItem } from "@/lib/types";
+import { esHojaEfectiva } from "@/lib/tarea-tree";
 import { formatDate, toDateOnlyISO, weekDays, weekRange } from "@/lib/utils";
 import { BacklogColumn } from "@/components/planning/backlog-column";
 import { DayColumn } from "@/components/planning/day-column";
@@ -61,7 +62,9 @@ export default function PlanificacionPage() {
     () => new Set(estados.filter((e) => e.mostrarEnBacklog).map((e) => e.id)),
     [estados],
   );
-  const backlogTareas = tareas.filter((t) => estadosBacklogIds.has(t.estadoId));
+  const backlogTareas = tareas.filter(
+    (t) => estadosBacklogIds.has(t.estadoId) && esHojaEfectiva(t, tareas),
+  );
 
   const diasPlanificadosPorTarea = useMemo(() => {
     const map = new Map<number, number>();
@@ -165,7 +168,8 @@ export default function PlanificacionPage() {
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <div className="flex flex-1 gap-4 overflow-x-auto pb-2">
             <BacklogColumn
-              tareas={backlogTareas}
+              tareasBacklog={backlogTareas}
+              tareas={tareas}
               diasPlanificadosPorTarea={diasPlanificadosPorTarea}
             />
             {dias.map((dia) => (
@@ -175,6 +179,7 @@ export default function PlanificacionPage() {
                 items={planificacion.filter(
                   (p) => p.fecha.slice(0, 10) === toDateOnlyISO(dia),
                 )}
+                tareas={tareas}
                 onRemove={eliminarAsignacion}
                 onHorasChange={actualizarHoras}
               />

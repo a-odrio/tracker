@@ -1,16 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiDelete, apiGet } from "@/lib/api-client";
-import type {
-  ClienteItem,
-  EstadoItem,
-  Prioridad,
-  ProyectoItem,
-  TareaItem,
-} from "@/lib/types";
+import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
+import type { ClienteItem, EstadoItem, Prioridad, TareaItem, TemaItem } from "@/lib/types";
+import { padreRecienCerrado, raizDe } from "@/lib/tarea-tree";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
-import { Button, Modal, MultiSelect } from "@/components/ui";
+import { Button, InlineBanner, Modal, MultiSelect } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
 import { EstadoTaskGroup } from "@/components/tasks/estado-task-group";
 
@@ -18,9 +13,9 @@ const PRIORIDADES: Prioridad[] = ["URGENTE", "ALTA", "MEDIA", "BAJA"];
 
 export default function TareasPage() {
   const [clientes, setClientes] = useState<ClienteItem[]>([]);
-  const [proyectos, setProyectos] = useState<ProyectoItem[]>([]);
   const [estados, setEstados] = useState<EstadoItem[]>([]);
   const [tareas, setTareas] = useState<TareaItem[]>([]);
+  const [tema, setTema] = useState<TemaItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -31,6 +26,7 @@ export default function TareasPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TareaItem | null>(null);
   const [colapsados, setColapsados] = useState<Set<number>>(new Set());
+  const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
 
   function toggleColapsado(estadoId: number) {
     setColapsados((prev) => {
@@ -41,22 +37,23 @@ export default function TareasPage() {
     });
   }
 
-  const proyectosFiltrados = clienteIds.length
-    ? proyectos.filter((p) => clienteIds.includes(p.clienteId))
-    : proyectos;
+  const raices = useMemo(() => tareas.filter((t) => t.parentId === null), [tareas]);
+  const raicesFiltradas = clienteIds.length
+    ? raices.filter((r) => r.clienteId != null && clienteIds.includes(r.clienteId))
+    : raices;
 
   useEffect(() => {
     Promise.all([
       apiGet<ClienteItem[]>("/api/clientes"),
-      apiGet<ProyectoItem[]>("/api/proyectos"),
       apiGet<EstadoItem[]>("/api/estados"),
       apiGet<TareaItem[]>("/api/tareas"),
+      apiGet<TemaItem>("/api/tema"),
     ])
-      .then(([c, p, e, t]) => {
+      .then(([c, e, t, tm]) => {
         setClientes(c);
-        setProyectos(p);
         setEstados(e);
         setTareas(t);
+        setTema(tm);
         const predeterminado = c.find((cl) => cl.predeterminado);
         if (predeterminado) setClienteIds([predeterminado.id]);
         setLoading(false);
@@ -66,10 +63,11 @@ export default function TareasPage() {
 
   const tareasFiltradas = useMemo(() => {
     return tareas.filter((t) => {
-      if (clienteIds.length && !clienteIds.includes(t.proyecto?.clienteId ?? -1)) {
+      const raiz = raizDe(t, tareas);
+      if (clienteIds.length && !clienteIds.includes(raiz.clienteId ?? -1)) {
         return false;
       }
-      if (proyectoIds.length && !proyectoIds.includes(t.proyectoId)) return false;
+      if (proyectoIds.length && !proyectoIds.includes(raiz.id)) return false;
       if (prioridades.length && !prioridades.includes(t.prioridad)) return false;
       return true;
     });
@@ -90,6 +88,17 @@ export default function TareasPage() {
     }
   }
 
+  async function finalizarPadre() {
+    if (!padreParaCerrar) return;
+    const estadoFinal = estados.find((e) => e.esFinal);
+    if (!estadoFinal) return;
+    const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
+      estadoId: estadoFinal.id,
+    });
+    setTareas((prev) => prev.map((t) => (t.id === actualizado.id ? actualizado : t)));
+    setPadreParaCerrar(null);
+  }
+
   if (error) {
     return (
       <p className="text-sm text-red-600 dark:text-red-400">
@@ -105,7 +114,7 @@ export default function TareasPage() {
           Tareas
         </h1>
         <Button
-          disabled={proyectos.length === 0}
+          disabled={raices.length === 0}
           onClick={() => {
             setEditing(null);
             setShowForm(true);
@@ -115,34 +124,49 @@ export default function TareasPage() {
         </Button>
       </div>
 
-      {proyectos.length === 0 && (
+      {raices.length === 0 && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
           Necesitás crear al menos un cliente y un proyecto antes de agregar tareas.
           Andá a Proyectos.
         </p>
       )}
 
+      {padreParaCerrar && (
+        <InlineBanner
+          text={`Se completaron todas las subtareas de "${padreParaCerrar.nombre}".`}
+          actionLabel="Finalizar tarea"
+          onAction={finalizarPadre}
+          onDismiss={() => setPadreParaCerrar(null)}
+        />
+      )}
+
       <Modal
-        open={(showForm || !!editing) && proyectos.length > 0}
+        open={(showForm || !!editing) && raices.length > 0 && !!tema}
         onClose={() => {
           setEditing(null);
           setShowForm(false);
         }}
         title={editing ? "Editar tarea" : "Nueva tarea"}
       >
+        {tema && (
         <TaskForm
           key={editing?.id ?? "new"}
           clientes={clientes}
-          proyectos={proyectos}
+          tareas={tareas}
           estados={estados}
+          colorPrincipal={tema.colorPrincipal}
           tarea={editing ?? undefined}
           onSaved={(tarea) => {
-            setTareas((prev) => {
-              const exists = prev.some((t) => t.id === tarea.id);
-              return exists
-                ? prev.map((t) => (t.id === tarea.id ? tarea : t))
-                : [...prev, tarea];
-            });
+            const antes = tareas;
+            const exists = antes.some((t) => t.id === tarea.id);
+            const nuevas = exists
+              ? antes.map((t) => (t.id === tarea.id ? tarea : t))
+              : [...antes, tarea];
+            setTareas(nuevas);
+            const padre = padreRecienCerrado(tarea.id, antes, nuevas);
+            if (padre) setPadreParaCerrar(padre);
+          }}
+          onDone={() => {
             setEditing(null);
             setShowForm(false);
           }}
@@ -151,6 +175,7 @@ export default function TareasPage() {
             setShowForm(false);
           }}
         />
+        )}
       </Modal>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -163,9 +188,7 @@ export default function TareasPage() {
             setProyectoIds((prev) =>
               values.length
                 ? prev.filter((id) =>
-                    proyectos.some(
-                      (p) => p.id === id && values.includes(p.clienteId),
-                    ),
+                    raices.some((r) => r.id === id && values.includes(r.clienteId ?? -1)),
                   )
                 : prev,
             );
@@ -177,7 +200,7 @@ export default function TareasPage() {
           label="Proyecto"
           selected={proyectoIds}
           onChange={setProyectoIds}
-          options={proyectosFiltrados.map((p) => ({ value: p.id, label: p.nombre }))}
+          options={raicesFiltradas.map((r) => ({ value: r.id, label: r.nombre }))}
         />
         <MultiSelect
           className="w-40"
@@ -195,6 +218,7 @@ export default function TareasPage() {
           {estadosOrdenados.map((estado) => (
             <EstadoTaskGroup
               key={estado.id}
+              tareas={tareas}
               estado={estado}
               tareasDelEstado={tareas.filter((t) => t.estadoId === estado.id)}
               tareasVisibles={tareasFiltradas.filter((t) => t.estadoId === estado.id)}

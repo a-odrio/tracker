@@ -2,16 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { addWeeks } from "date-fns";
-import { apiDelete, apiGet } from "@/lib/api-client";
+import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
 import type {
   ClienteItem,
   EstadoItem,
-  ProyectoItem,
   RegistroTiempoItem,
   TareaItem,
   TemaItem,
   TipoTrabajoItem,
 } from "@/lib/types";
+import { clienteIdDe, padreRecienCerrado } from "@/lib/tarea-tree";
 import {
   formatDate,
   sumarMinutosSinSolapar,
@@ -19,7 +19,7 @@ import {
   weekDays,
   weekRange,
 } from "@/lib/utils";
-import { Button, Modal, Select } from "@/components/ui";
+import { Button, InlineBanner, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
 import { TimerBar } from "@/components/timetracking/timer-bar";
 import { WeekCalendar } from "@/components/timetracking/week-calendar";
@@ -27,7 +27,6 @@ import { WeekCalendar } from "@/components/timetracking/week-calendar";
 export default function RegistroPage() {
   const [weekAnchor, setWeekAnchor] = useState(new Date());
   const [clientes, setClientes] = useState<ClienteItem[]>([]);
-  const [proyectos, setProyectos] = useState<ProyectoItem[]>([]);
   const [tareas, setTareas] = useState<TareaItem[]>([]);
   const [tipos, setTipos] = useState<TipoTrabajoItem[]>([]);
   const [estados, setEstados] = useState<EstadoItem[]>([]);
@@ -43,26 +42,25 @@ export default function RegistroPage() {
     fecha?: string;
     horaInicio?: string;
     horaFin?: string;
-    proyectoId?: number;
-    tareaId?: number | "";
-    tipoTrabajoId?: number;
+    tareaId?: number;
   } | null>(null);
+  const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
 
   const dias = useMemo(() => weekDays(weekAnchor), [weekAnchor]);
   const { start, end } = useMemo(() => weekRange(weekAnchor), [weekAnchor]);
 
+  const hayProyectos = tareas.some((t) => t.parentId === null);
+
   useEffect(() => {
     Promise.all([
       apiGet<ClienteItem[]>("/api/clientes"),
-      apiGet<ProyectoItem[]>("/api/proyectos"),
       apiGet<TareaItem[]>("/api/tareas"),
       apiGet<TipoTrabajoItem[]>("/api/tipos-trabajo"),
       apiGet<EstadoItem[]>("/api/estados"),
       apiGet<TemaItem>("/api/tema"),
     ])
-      .then(([c, p, t, ti, e, tm]) => {
+      .then(([c, t, ti, e, tm]) => {
         setClientes(c);
-        setProyectos(p);
         setTareas(t);
         setTipos(ti);
         setEstados(e);
@@ -101,8 +99,21 @@ export default function RegistroPage() {
     setShowForm(false);
   }
 
+  async function finalizarPadre() {
+    if (!padreParaCerrar) return;
+    const estadoFinal = estados.find((e) => e.esFinal);
+    if (!estadoFinal) return;
+    const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
+      estadoId: estadoFinal.id,
+    });
+    setTareas((prev) => prev.map((t) => (t.id === actualizado.id ? actualizado : t)));
+    setPadreParaCerrar(null);
+  }
+
   const registrosFiltrados = clienteFiltro
-    ? registros.filter((r) => r.proyecto?.clienteId === clienteFiltro)
+    ? registros.filter(
+        (r) => r.tarea && clienteIdDe(r.tarea, tareas) === clienteFiltro,
+      )
     : registros;
 
   const totalHoras = sumarMinutosSinSolapar(registrosFiltrados) / 60;
@@ -141,13 +152,11 @@ export default function RegistroPage() {
         <div className="shrink-0">
           <TimerBar
             clientes={clientes}
-            proyectos={proyectos}
             tareas={tareas}
             tipos={tipos}
             estados={estados}
             colorPrincipal={tema.colorPrincipal}
             clienteInicial={clienteFiltro || undefined}
-            onProyectoCreated={(proyecto) => setProyectos((prev) => [...prev, proyecto])}
             onTareaCreated={(tarea) => setTareas((prev) => [...prev, tarea])}
             onAbrirRegistro={(seed) => {
               setEditing(null);
@@ -182,16 +191,25 @@ export default function RegistroPage() {
         </div>
       </div>
 
-      {proyectos.length === 0 && (
+      {!hayProyectos && (
         <p className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
           Necesitás crear al menos un cliente y un proyecto antes de cargar registros.
           Andá a Proyectos.
         </p>
       )}
 
+      {padreParaCerrar && (
+        <InlineBanner
+          text={`Se completaron todas las subtareas de "${padreParaCerrar.nombre}".`}
+          actionLabel="Finalizar tarea"
+          onAction={finalizarPadre}
+          onDismiss={() => setPadreParaCerrar(null)}
+        />
+      )}
+
       {tema && (
         <Modal
-          open={(showForm || !!editing) && proyectos.length > 0}
+          open={(showForm || !!editing) && hayProyectos}
           onClose={() => {
             setEditing(null);
             setSeleccion(null);
@@ -204,11 +222,10 @@ export default function RegistroPage() {
             key={
               editing?.id ??
               (seleccion
-                ? `sel-${seleccion.fecha}-${seleccion.horaInicio}-${seleccion.horaFin}-${seleccion.proyectoId}-${seleccion.tareaId}-${seleccion.tipoTrabajoId}`
+                ? `sel-${seleccion.fecha}-${seleccion.horaInicio}-${seleccion.horaFin}-${seleccion.tareaId}`
                 : "new")
             }
             clientes={clientes}
-            proyectos={proyectos}
             tareas={tareas}
             tipos={tipos}
             estados={estados}
@@ -217,7 +234,6 @@ export default function RegistroPage() {
             registro={editing ?? undefined}
             clienteInicial={clienteFiltro || undefined}
             valoresIniciales={seleccion ?? undefined}
-            onProyectoCreated={(proyecto) => setProyectos((prev) => [...prev, proyecto])}
             onTareaCreated={(tarea) => setTareas((prev) => [...prev, tarea])}
             onTipoCreated={(tipo) => setTipos((prev) => [...prev, tipo])}
             onSaved={(registro) => {
@@ -229,9 +245,13 @@ export default function RegistroPage() {
               });
               if (registro.tarea) {
                 const tareaActualizada = registro.tarea;
-                setTareas((prev) =>
-                  prev.map((t) => (t.id === tareaActualizada.id ? { ...t, ...tareaActualizada } : t)),
+                const antes = tareas;
+                const nuevas = antes.map((t) =>
+                  t.id === tareaActualizada.id ? { ...t, ...tareaActualizada } : t,
                 );
+                setTareas(nuevas);
+                const padre = padreRecienCerrado(tareaActualizada.id, antes, nuevas);
+                if (padre) setPadreParaCerrar(padre);
               }
               setEditing(null);
               setSeleccion(null);
@@ -261,6 +281,7 @@ export default function RegistroPage() {
           <WeekCalendar
             dias={dias}
             registros={registrosFiltrados}
+            tareas={tareas}
             onEdit={(registro) => {
               setEditing(registro);
               setSeleccion(null);

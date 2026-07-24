@@ -9,6 +9,7 @@ import type {
   RegistroTiempoItem,
   TareaItem,
 } from "@/lib/types";
+import { clienteIdDe, raizDe } from "@/lib/tarea-tree";
 import { formatDate, sumarMinutosSinSolapar, toDateOnlyISO } from "@/lib/utils";
 import { Button, Section, Select } from "@/components/ui";
 import { BarList, type BarListItem } from "@/components/reports/bar-list";
@@ -72,16 +73,18 @@ export default function ReportesPage() {
   }, [desde, hasta]);
 
   const registrosRangoFiltrados = clienteFiltro
-    ? registrosRango.filter((r) => r.proyecto?.clienteId === clienteFiltro)
+    ? registrosRango.filter((r) => r.tarea && clienteIdDe(r.tarea, tareas) === clienteFiltro)
     : registrosRango;
   const registrosTodosFiltrados = clienteFiltro
-    ? registrosTodos.filter((r) => r.proyecto?.clienteId === clienteFiltro)
+    ? registrosTodos.filter((r) => r.tarea && clienteIdDe(r.tarea, tareas) === clienteFiltro)
     : registrosTodos;
   const tareasFiltradas = clienteFiltro
-    ? tareas.filter((t) => t.proyecto?.clienteId === clienteFiltro)
+    ? tareas.filter((t) => clienteIdDe(t, tareas) === clienteFiltro)
     : tareas;
   const planificacionFiltrada = clienteFiltro
-    ? planificacion.filter((p) => p.tarea?.proyecto?.clienteId === clienteFiltro)
+    ? planificacion.filter(
+        (p) => p.tarea && clienteIdDe(p.tarea, tareas) === clienteFiltro,
+      )
     : planificacion;
 
   const totalHoras = horasSinSolapar(registrosRangoFiltrados);
@@ -110,14 +113,16 @@ export default function ReportesPage() {
       { label: string; color: string; registros: RegistroTiempoItem[] }
     >();
     for (const r of registrosRangoFiltrados) {
-      const key = `p-${r.proyectoId}`;
+      if (!r.tarea) continue;
+      const raiz = raizDe(r.tarea, tareas);
+      const key = `p-${raiz.id}`;
       const existente = grupos.get(key);
       if (existente) {
         existente.registros.push(r);
       } else {
         grupos.set(key, {
-          label: r.proyecto?.nombre ?? "—",
-          color: r.proyecto?.color ?? "#64748b",
+          label: raiz.nombre,
+          color: raiz.color ?? "#64748b",
           registros: [r],
         });
       }
@@ -129,7 +134,7 @@ export default function ReportesPage() {
       value: horasSinSolapar(g.registros),
     }));
     return items.sort((a, b) => b.value - a.value);
-  }, [registrosRangoFiltrados]);
+  }, [registrosRangoFiltrados, tareas]);
 
   const porTipoTrabajo = useMemo(() => {
     const grupos = new Map<string, { label: string; registros: RegistroTiempoItem[] }>();
@@ -318,12 +323,13 @@ export default function ReportesPage() {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {planificadoVsReal.map(({ tarea, estimadas, reales }) => {
                       const diff = reales - estimadas;
+                      const raiz = raizDe(tarea, tareas);
                       return (
                         <tr key={tarea.id}>
                           <td className="py-2 pr-3 text-slate-800 dark:text-slate-200">
                             {tarea.nombre}
                             <div className="text-xs text-slate-400 dark:text-slate-500">
-                              {tarea.proyecto?.cliente?.nombre} · {tarea.proyecto?.nombre}
+                              {raiz.cliente?.nombre} · {raiz.nombre}
                             </div>
                           </td>
                           <td className="py-2 pr-3 tabular-nums text-slate-600 dark:text-slate-300">

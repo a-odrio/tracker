@@ -14,6 +14,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Pencil, Trash2, Zap } from "lucide-react";
 import { apiPatch } from "@/lib/api-client";
 import type { TareaItem } from "@/lib/types";
+import { raizDe } from "@/lib/tarea-tree";
 import { PRIORIDAD_COLOR, PRIORIDAD_LABEL } from "@/lib/utils";
 
 function SortableTaskRow({ tarea, children }: { tarea: TareaItem; children: ReactNode }) {
@@ -45,12 +46,15 @@ function SortableTaskRow({ tarea, children }: { tarea: TareaItem; children: Reac
 }
 
 export function TaskTable({
+  tareas,
   tareasDelEstado,
   tareasVisibles,
   onReorder,
   onEdit,
   onDelete,
 }: {
+  /** Lista plana completa (todos los estados), para resolver la raíz/cliente de cada fila. */
+  tareas: TareaItem[];
   /** Todas las tareas de este estado, sin aplicar los filtros de la pantalla — define el orden real a persistir. */
   tareasDelEstado: TareaItem[];
   /** Subconjunto de `tareasDelEstado` que pasa los filtros activos; es lo que se muestra y se puede arrastrar. */
@@ -84,9 +88,9 @@ export function TaskTable({
 
     await Promise.all(
       nuevasDelEstado.map((tarea, index) =>
-        tarea.orden === index
+        tarea.ordenEstado === index
           ? Promise.resolve()
-          : apiPatch(`/api/tareas/${tarea.id}`, { orden: index }),
+          : apiPatch(`/api/tareas/${tarea.id}`, { ordenEstado: index }),
       ),
     );
   }
@@ -118,7 +122,9 @@ export function TaskTable({
             strategy={verticalListSortingStrategy}
           >
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {tareasVisibles.map((tarea) => (
+              {tareasVisibles.map((tarea) => {
+                const raiz = raizDe(tarea, tareas);
+                return (
                 <SortableTaskRow key={tarea.id} tarea={tarea}>
                   <td className="py-2.5 pr-3">
                     <div className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-100">
@@ -138,11 +144,11 @@ export function TaskTable({
                   <td className="py-2.5 pr-3 text-slate-600 dark:text-slate-300">
                     <div className="flex items-center gap-1.5">
                       <span
-                        title={tarea.proyecto?.cliente?.nombre}
+                        title={raiz.cliente?.nombre}
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: tarea.proyecto?.cliente?.color }}
+                        style={{ backgroundColor: raiz.cliente?.color }}
                       />
-                      {tarea.proyecto?.nombre}
+                      {raiz.nombre}
                     </div>
                   </td>
                   <td className="py-2.5 pr-3">
@@ -174,7 +180,8 @@ export function TaskTable({
                     </div>
                   </td>
                 </SortableTaskRow>
-              ))}
+                );
+              })}
             </tbody>
           </SortableContext>
         </table>

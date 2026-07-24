@@ -2,15 +2,20 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import type { TareaItem } from "@/lib/types";
+import { raizDe } from "@/lib/tarea-tree";
 import { PRIORIDAD_COLOR, PRIORIDAD_LABEL } from "@/lib/utils";
 
 export function BacklogItem({
   tarea,
+  tareas,
   diasPlanificados = 0,
 }: {
   tarea: TareaItem;
+  /** Lista plana completa, para resolver la raíz/cliente de la tarea. */
+  tareas: TareaItem[];
   diasPlanificados?: number;
 }) {
+  const raiz = raizDe(tarea, tareas);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `tarea-${tarea.id}`,
   });
@@ -34,7 +39,7 @@ export function BacklogItem({
       <div className="mb-1 flex items-center justify-between gap-1">
         <span
           className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: tarea.proyecto?.color }}
+          style={{ backgroundColor: raiz.color ?? undefined }}
         />
         <span className="flex-1 truncate font-medium text-slate-800 dark:text-slate-100">
           {tarea.nombre}
@@ -46,7 +51,7 @@ export function BacklogItem({
         </span>
       </div>
       <div className="truncate text-slate-400 dark:text-slate-500">
-        {tarea.proyecto?.cliente?.nombre} · {tarea.proyecto?.nombre}
+        {raiz.cliente?.nombre} · {raiz.nombre}
       </div>
       {diasPlanificados > 0 && (
         <div className="mt-1 inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">

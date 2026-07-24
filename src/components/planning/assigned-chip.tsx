@@ -2,14 +2,18 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { useState } from "react";
-import type { PlanificacionItem } from "@/lib/types";
+import type { PlanificacionItem, TareaItem } from "@/lib/types";
+import { raizDe } from "@/lib/tarea-tree";
 
 export function AssignedChip({
   item,
+  tareas,
   onRemove,
   onHorasChange,
 }: {
   item: PlanificacionItem;
+  /** Lista plana completa, para resolver la raíz/cliente de la tarea. */
+  tareas: TareaItem[];
   onRemove: () => void;
   onHorasChange: (horas: number | null) => void;
 }) {
@@ -27,6 +31,7 @@ export function AssignedChip({
     : undefined;
 
   const tarea = item.tarea;
+  const raiz = tarea ? raizDe(tarea, tareas) : undefined;
 
   return (
     <div
@@ -37,7 +42,7 @@ export function AssignedChip({
       <div className="flex items-start gap-1">
         <span
           className="mt-0.5 h-2 w-2 shrink-0 cursor-grab rounded-full active:cursor-grabbing"
-          style={{ backgroundColor: tarea?.proyecto?.color }}
+          style={{ backgroundColor: raiz?.color ?? undefined }}
           {...attributes}
           {...listeners}
         />
@@ -46,7 +51,7 @@ export function AssignedChip({
             {tarea?.nombre}
           </div>
           <div className="truncate text-[10px] text-slate-400 dark:text-slate-500">
-            {tarea?.proyecto?.nombre}
+            {raiz?.nombre}
           </div>
         </div>
         <button

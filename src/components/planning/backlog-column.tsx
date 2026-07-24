@@ -7,9 +7,13 @@ import type { EstadoItem, TareaItem } from "@/lib/types";
 import { BacklogItem } from "@/components/planning/backlog-item";
 
 export function BacklogColumn({
+  tareasBacklog,
   tareas,
   diasPlanificadosPorTarea,
 }: {
+  /** Tareas hoja-efectiva que corresponde mostrar en el backlog. */
+  tareasBacklog: TareaItem[];
+  /** Lista plana completa, para resolver la raíz/cliente de cada tarea. */
   tareas: TareaItem[];
   diasPlanificadosPorTarea: Map<number, number>;
 }) {
@@ -26,7 +30,7 @@ export function BacklogColumn({
   }
 
   const grupos = new Map<number, { estado: EstadoItem; tareas: TareaItem[] }>();
-  for (const tarea of tareas) {
+  for (const tarea of tareasBacklog) {
     if (!tarea.estado) continue;
     const existente = grupos.get(tarea.estadoId);
     if (existente) {
@@ -44,7 +48,7 @@ export function BacklogColumn({
       <div className="mb-2 px-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
         Backlog
         <span className="ml-1 font-normal text-slate-400 dark:text-slate-500">
-          ({tareas.length})
+          ({tareasBacklog.length})
         </span>
       </div>
       <div
@@ -83,6 +87,7 @@ export function BacklogColumn({
                     <BacklogItem
                       key={tarea.id}
                       tarea={tarea}
+                      tareas={tareas}
                       diasPlanificados={diasPlanificadosPorTarea.get(tarea.id) ?? 0}
                     />
                   ))}
@@ -91,7 +96,7 @@ export function BacklogColumn({
             </div>
           );
         })}
-        {tareas.length === 0 && (
+        {tareasBacklog.length === 0 && (
           <p className="p-2 text-center text-xs text-slate-400 dark:text-slate-600">
             Sin tareas pendientes de planificar.
           </p>

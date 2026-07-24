@@ -1,18 +1,21 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
-import type { PlanificacionItem } from "@/lib/types";
+import type { PlanificacionItem, TareaItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { AssignedChip } from "@/components/planning/assigned-chip";
 
 export function DayColumn({
   fecha,
   items,
+  tareas,
   onRemove,
   onHorasChange,
 }: {
   fecha: Date;
   items: PlanificacionItem[];
+  /** Lista plana completa, para resolver la raíz/cliente de cada tarea. */
+  tareas: TareaItem[];
   onRemove: (item: PlanificacionItem) => void;
   onHorasChange: (item: PlanificacionItem, horas: number | null) => void;
 }) {
@@ -41,6 +44,7 @@ export function DayColumn({
           <AssignedChip
             key={item.id}
             item={item}
+            tareas={tareas}
             onRemove={() => onRemove(item)}
             onHorasChange={(h) => onHorasChange(item, h)}
           />

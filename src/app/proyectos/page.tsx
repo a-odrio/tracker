@@ -3,21 +3,23 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
-import type { ClienteItem, ProyectoItem, TemaItem } from "@/lib/types";
+import type { ClienteItem, EstadoItem, TareaItem, TemaItem } from "@/lib/types";
 import { Button, ErrorText, Modal } from "@/components/ui";
 import { ClienteCard } from "@/components/proyectos/cliente-card";
 import { ClienteForm } from "@/components/proyectos/cliente-form";
-import { ProyectoForm } from "@/components/proyectos/proyecto-form";
+import { TaskForm } from "@/components/tasks/task-form";
 
 type ModalState =
   | { type: "cliente-new" }
   | { type: "cliente-edit"; cliente: ClienteItem }
   | { type: "proyecto-new"; clienteId: number }
-  | { type: "proyecto-edit"; clienteId: number; proyecto: ProyectoItem }
+  | { type: "proyecto-edit"; clienteId: number; proyecto: TareaItem }
   | null;
 
 export default function ProyectosPage() {
   const [clientes, setClientes] = useState<ClienteItem[]>([]);
+  const [tareas, setTareas] = useState<TareaItem[]>([]);
+  const [estados, setEstados] = useState<EstadoItem[]>([]);
   const [tema, setTema] = useState<TemaItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,10 +29,14 @@ export default function ProyectosPage() {
   useEffect(() => {
     Promise.all([
       apiGet<ClienteItem[]>("/api/clientes?incluirArchivados=true"),
+      apiGet<TareaItem[]>("/api/tareas"),
+      apiGet<EstadoItem[]>("/api/estados"),
       apiGet<TemaItem>("/api/tema"),
     ])
-      .then(([c, tm]) => {
+      .then(([c, t, e, tm]) => {
         setClientes(c);
+        setTareas(t);
+        setEstados(e);
         setTema(tm);
         setLoading(false);
       })
@@ -46,38 +52,39 @@ export default function ProyectosPage() {
     setClientes((prev) => {
       const existe = prev.some((c) => c.id === cliente.id);
       return existe
-        ? prev.map((c) => (c.id === cliente.id ? { ...cliente, proyectos: c.proyectos } : c))
-        : [...prev, { ...cliente, proyectos: [] }];
+        ? prev.map((c) => (c.id === cliente.id ? { ...cliente, tareas: c.tareas } : c))
+        : [...prev, { ...cliente, tareas: [] }];
     });
   }
 
-  function upsertProyecto(clienteId: number, proyecto: ProyectoItem) {
+  function upsertTareaRaiz(clienteId: number, tarea: TareaItem) {
+    setTareas((prev) => {
+      const existe = prev.some((t) => t.id === tarea.id);
+      return existe ? prev.map((t) => (t.id === tarea.id ? tarea : t)) : [...prev, tarea];
+    });
     setClientes((prev) =>
       prev.map((c) => {
         if (c.id !== clienteId) return c;
-        const proyectos = c.proyectos ?? [];
-        const existe = proyectos.some((p) => p.id === proyecto.id);
+        const raices = c.tareas ?? [];
+        const existe = raices.some((t) => t.id === tarea.id);
         return {
           ...c,
-          proyectos: existe
-            ? proyectos.map((p) => (p.id === proyecto.id ? proyecto : p))
-            : [...proyectos, proyecto],
+          tareas: existe
+            ? raices.map((t) => (t.id === tarea.id ? tarea : t))
+            : [...raices, tarea],
         };
       }),
     );
   }
 
-  function reordenarProyectos(clienteId: number, proyectosActivos: ProyectoItem[]) {
+  function reordenarTareasRaiz(clienteId: number, raicesActivas: TareaItem[]) {
     setClientes((prev) =>
       prev.map((c) => {
         if (c.id !== clienteId) return c;
-        const archivados = (c.proyectos ?? []).filter((p) => !p.activo);
+        const archivadas = (c.tareas ?? []).filter((t) => !t.activo);
         return {
           ...c,
-          proyectos: [
-            ...proyectosActivos.map((p, i) => ({ ...p, orden: i })),
-            ...archivados,
-          ],
+          tareas: [...raicesActivas.map((t, i) => ({ ...t, orden: i })), ...archivadas],
         };
       }),
     );
@@ -103,7 +110,7 @@ export default function ProyectosPage() {
       });
       setClientes((prev) =>
         prev.map((c) => {
-          if (c.id === actualizado.id) return { ...actualizado, proyectos: c.proyectos };
+          if (c.id === actualizado.id) return { ...actualizado, tareas: c.tareas };
           return c.predeterminado ? { ...c, predeterminado: false } : c;
         }),
       );
@@ -123,27 +130,28 @@ export default function ProyectosPage() {
     }
   }
 
-  async function toggleProyectoActivo(clienteId: number, proyecto: ProyectoItem) {
+  async function toggleTareaActiva(clienteId: number, tarea: TareaItem) {
     setActionError("");
     try {
-      const actualizado = await apiPatch<ProyectoItem>(`/api/proyectos/${proyecto.id}`, {
-        activo: !proyecto.activo,
+      const actualizado = await apiPatch<TareaItem>(`/api/tareas/${tarea.id}`, {
+        activo: !tarea.activo,
       });
-      upsertProyecto(clienteId, actualizado);
+      upsertTareaRaiz(clienteId, actualizado);
       cerrarModal();
     } catch (e) {
       setActionError((e as Error).message);
     }
   }
 
-  async function eliminarProyecto(clienteId: number, proyecto: ProyectoItem) {
+  async function eliminarTareaRaiz(clienteId: number, tarea: TareaItem) {
     setActionError("");
     try {
-      await apiDelete(`/api/proyectos/${proyecto.id}`);
+      await apiDelete(`/api/tareas/${tarea.id}`);
+      setTareas((prev) => prev.filter((t) => t.id !== tarea.id));
       setClientes((prev) =>
         prev.map((c) =>
           c.id === clienteId
-            ? { ...c, proyectos: (c.proyectos ?? []).filter((p) => p.id !== proyecto.id) }
+            ? { ...c, tareas: (c.tareas ?? []).filter((t) => t.id !== tarea.id) }
             : c,
         ),
       );
@@ -204,8 +212,8 @@ export default function ProyectosPage() {
             onEditProyecto={(proyecto) =>
               setModal({ type: "proyecto-edit", clienteId: cliente.id, proyecto })
             }
-            onReorderProyectos={(proyectosActivos) =>
-              reordenarProyectos(cliente.id, proyectosActivos)
+            onReorderProyectos={(raicesActivas) =>
+              reordenarTareasRaiz(cliente.id, raicesActivas)
             }
           />
         ))}
@@ -253,38 +261,39 @@ export default function ProyectosPage() {
         )}
 
         {modal?.type === "proyecto-new" && (
-          <ProyectoForm
+          <TaskForm
             colorPrincipal={tema.colorPrincipal}
             clienteId={modal.clienteId}
-            onSaved={(proyecto) => {
-              upsertProyecto(modal.clienteId, proyecto);
-              cerrarModal();
-            }}
+            tareas={tareas}
+            estados={estados}
+            parentId={null}
+            onSaved={(proyecto) => upsertTareaRaiz(modal.clienteId, proyecto)}
+            onDone={cerrarModal}
             onCancel={cerrarModal}
           />
         )}
 
         {modal?.type === "proyecto-edit" && (
           <>
-            <ProyectoForm
+            <TaskForm
               colorPrincipal={tema.colorPrincipal}
               clienteId={modal.clienteId}
-              proyecto={modal.proyecto}
-              onSaved={(proyecto) => {
-                upsertProyecto(modal.clienteId, proyecto);
-                cerrarModal();
-              }}
+              tareas={tareas}
+              estados={estados}
+              tarea={modal.proyecto}
+              onSaved={(proyecto) => upsertTareaRaiz(modal.clienteId, proyecto)}
+              onDone={cerrarModal}
               onCancel={cerrarModal}
             />
             <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-3 dark:border-slate-800">
               <button
-                onClick={() => toggleProyectoActivo(modal.clienteId, modal.proyecto)}
+                onClick={() => toggleTareaActiva(modal.clienteId, modal.proyecto)}
                 className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
               >
                 {modal.proyecto.activo ? "Archivar" : "Activar"}
               </button>
               <button
-                onClick={() => eliminarProyecto(modal.clienteId, modal.proyecto)}
+                onClick={() => eliminarTareaRaiz(modal.clienteId, modal.proyecto)}
                 className="text-xs font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
               >
                 Eliminar

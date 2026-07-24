@@ -6,21 +6,19 @@ import { apiDelete, apiGet, apiPost } from "@/lib/api-client";
 import type {
   ClienteItem,
   EstadoItem,
-  ProyectoItem,
   TareaItem,
   TimerActivoItem,
   TipoTrabajoItem,
 } from "@/lib/types";
+import { descendientesIndentados, raizDe } from "@/lib/tarea-tree";
 import { minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
 import { Button, ErrorText, Select } from "@/components/ui";
-import { ProyectoForm } from "@/components/proyectos/proyecto-form";
 import { TaskForm } from "@/components/tasks/task-form";
 
 type SubVista = "form" | "nuevo-proyecto" | "nueva-tarea";
 
 export type SeedRegistro = {
-  proyectoId?: number;
-  tareaId?: number | "";
+  tareaId?: number;
   tipoTrabajoId?: number;
   fecha?: string;
   horaInicio?: string;
@@ -51,24 +49,20 @@ function horasParaDetener(inicio: Date, fin: Date) {
 
 export function TimerBar({
   clientes,
-  proyectos,
   tareas,
   tipos,
   estados,
   colorPrincipal,
   clienteInicial,
-  onProyectoCreated,
   onTareaCreated,
   onAbrirRegistro,
 }: {
   clientes: ClienteItem[];
-  proyectos: ProyectoItem[];
   tareas: TareaItem[];
   tipos: TipoTrabajoItem[];
   estados: EstadoItem[];
   colorPrincipal: string;
   clienteInicial?: number;
-  onProyectoCreated: (proyecto: ProyectoItem) => void;
   onTareaCreated: (tarea: TareaItem) => void;
   /** Abre el formulario de registro manual (nuevo o para revisar lo que dejó el timer). */
   onAbrirRegistro: (seed: SeedRegistro) => void;
@@ -84,9 +78,11 @@ export function TimerBar({
   const clienteIdInicial =
     clienteInicial ?? clientes.find((c) => c.predeterminado)?.id ?? clientes[0]?.id ?? "";
   const [clienteId, setClienteId] = useState<number | "">(clienteIdInicial);
-  const proyectosDelClienteInicial = proyectos.filter((p) => p.clienteId === clienteIdInicial);
-  const [proyectoId, setProyectoId] = useState(proyectosDelClienteInicial[0]?.id ?? 0);
-  const [tareaId, setTareaId] = useState<number | "">("");
+  const raicesDelClienteInicial = tareas.filter(
+    (t) => t.parentId === null && t.clienteId === clienteIdInicial,
+  );
+  const [proyectoId, setProyectoId] = useState(raicesDelClienteInicial[0]?.id ?? 0);
+  const [tareaId, setTareaId] = useState<number>(proyectoId);
   const [tipoTrabajoId, setTipoTrabajoId] = useState(tipos[0]?.id ?? 0);
 
   useEffect(() => {
@@ -101,18 +97,26 @@ export function TimerBar({
     return () => clearInterval(id);
   }, [timer]);
 
-  const proyectosFiltrados = proyectos.filter((p) => !clienteId || p.clienteId === clienteId);
-  const tareasDisponibles = tareas.filter(
-    (t) => t.proyectoId === proyectoId && !t.estado?.esFinal,
+  const proyectosFiltrados = tareas.filter(
+    (t) => t.parentId === null && (!clienteId || t.clienteId === clienteId),
+  );
+  const descendientes = descendientesIndentados(proyectoId, tareas).filter(
+    (d) => !d.tarea.estado?.esFinal,
   );
 
   function cambiarCliente(id: number) {
     setClienteId(id);
-    const disponibles = proyectos.filter((p) => p.clienteId === id);
-    if (!disponibles.some((p) => p.id === proyectoId)) {
-      setProyectoId(disponibles[0]?.id ?? 0);
-      setTareaId("");
+    const disponibles = tareas.filter((t) => t.parentId === null && t.clienteId === id);
+    if (!disponibles.some((t) => t.id === proyectoId)) {
+      const nuevoProyectoId = disponibles[0]?.id ?? 0;
+      setProyectoId(nuevoProyectoId);
+      setTareaId(nuevoProyectoId);
     }
+  }
+
+  function cambiarProyecto(id: number) {
+    setProyectoId(id);
+    setTareaId(id);
   }
 
   async function iniciar() {
@@ -120,8 +124,7 @@ export function TimerBar({
     setStarting(true);
     try {
       const nuevo = await apiPost<TimerActivoItem>("/api/timer", {
-        proyectoId,
-        tareaId: tareaId || null,
+        tareaId,
         tipoTrabajoId,
       });
       setTimer(nuevo);
@@ -144,8 +147,7 @@ export function TimerBar({
       await apiDelete("/api/timer");
       setTimer(null);
       onAbrirRegistro({
-        proyectoId: timer.proyectoId,
-        tareaId: timer.tareaId ?? "",
+        tareaId: timer.tareaId,
         tipoTrabajoId: timer.tipoTrabajoId,
         fecha,
         horaInicio,
@@ -182,17 +184,20 @@ export function TimerBar({
         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           Nuevo proyecto
         </h3>
-        <ProyectoForm
+        <TaskForm
           colorPrincipal={colorPrincipal}
           clientes={clientes}
           clienteId={clienteId || undefined}
+          tareas={tareas}
+          estados={estados}
+          parentId={null}
           onSaved={(proyecto) => {
-            onProyectoCreated(proyecto);
-            setClienteId(proyecto.clienteId);
+            onTareaCreated(proyecto);
+            setClienteId(proyecto.clienteId ?? clienteId);
             setProyectoId(proyecto.id);
-            setTareaId("");
-            setSubVista("form");
+            setTareaId(proyecto.id);
           }}
+          onDone={() => setSubVista("form")}
           onCancel={() => setSubVista("form")}
         />
       </div>
@@ -212,19 +217,15 @@ export function TimerBar({
           Nueva tarea
         </h3>
         <TaskForm
-          clientes={clientes}
-          proyectos={proyectos}
+          colorPrincipal={colorPrincipal}
+          tareas={tareas}
           estados={estados}
-          defaultProyectoId={proyectoId}
+          parentId={proyectoId}
           onSaved={(tarea) => {
             onTareaCreated(tarea);
-            setClienteId(
-              proyectos.find((p) => p.id === tarea.proyectoId)?.clienteId ?? clienteId,
-            );
-            setProyectoId(tarea.proyectoId);
             setTareaId(tarea.id);
-            setSubVista("form");
           }}
+          onDone={() => setSubVista("form")}
           onCancel={() => setSubVista("form")}
         />
       </div>
@@ -233,6 +234,7 @@ export function TimerBar({
 
   if (timer) {
     const elapsedMs = now - new Date(timer.inicio).getTime();
+    const raizTimer = timer.tarea ? raizDe(timer.tarea, tareas) : undefined;
     return (
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--accent-primary)] bg-white p-3 dark:bg-slate-900">
         <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -241,11 +243,12 @@ export function TimerBar({
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-            {timer.tarea?.nombre ?? "Sin tarea específica"}
+            {timer.tarea && timer.tarea.id !== raizTimer?.id
+              ? timer.tarea.nombre
+              : "Sin tarea específica"}
           </div>
           <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-            {timer.proyecto?.cliente?.nombre} · {timer.proyecto?.nombre} ·{" "}
-            {timer.tipoTrabajo?.nombre}
+            {raizTimer?.cliente?.nombre} · {raizTimer?.nombre} · {timer.tipoTrabajo?.nombre}
           </div>
         </div>
         <div className="font-mono text-lg tabular-nums text-slate-900 dark:text-slate-100">
@@ -269,8 +272,7 @@ export function TimerBar({
         <button
           onClick={() =>
             onAbrirRegistro({
-              proyectoId: timer.proyectoId,
-              tareaId: timer.tareaId ?? "",
+              tareaId: timer.tareaId,
               tipoTrabajoId: timer.tipoTrabajoId,
             })
           }
@@ -315,10 +317,7 @@ export function TimerBar({
         <Select
           className="w-40"
           value={proyectoId}
-          onChange={(e) => {
-            setProyectoId(Number(e.target.value));
-            setTareaId("");
-          }}
+          onChange={(e) => cambiarProyecto(Number(e.target.value))}
         >
           {proyectosFiltrados.map((p) => (
             <option key={p.id} value={p.id}>
@@ -343,11 +342,12 @@ export function TimerBar({
         <Select
           className="w-40"
           value={tareaId}
-          onChange={(e) => setTareaId(e.target.value ? Number(e.target.value) : "")}
+          onChange={(e) => setTareaId(Number(e.target.value))}
         >
-          <option value="">Sin tarea específica</option>
-          {tareasDisponibles.map((t) => (
+          <option value={proyectoId}>— (proyecto en general)</option>
+          {descendientes.map(({ tarea: t, profundidad }) => (
             <option key={t.id} value={t.id}>
+              {"— ".repeat(profundidad + 1)}
               {t.nombre}
             </option>
           ))}
@@ -378,7 +378,7 @@ export function TimerBar({
         <Play size={14} />
       </Button>
       <button
-        onClick={() => onAbrirRegistro({ proyectoId, tareaId, tipoTrabajoId })}
+        onClick={() => onAbrirRegistro({ tareaId, tipoTrabajoId })}
         disabled={!proyectoId}
         title="Nuevo registro manual"
         className="shrink-0 text-slate-400 hover:text-slate-700 disabled:opacity-40 dark:hover:text-slate-200"

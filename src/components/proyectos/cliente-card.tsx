@@ -14,14 +14,14 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronRight, GripVertical, Pencil, Plus, Star } from "lucide-react";
 import { apiPatch } from "@/lib/api-client";
-import type { ClienteItem, ProyectoItem } from "@/lib/types";
+import type { ClienteItem, TareaItem } from "@/lib/types";
 
 function ProyectoRowContent({
   proyecto,
   onEdit,
   dragHandle,
 }: {
-  proyecto: ProyectoItem;
+  proyecto: TareaItem;
   onEdit: () => void;
   dragHandle?: ReactNode;
 }) {
@@ -30,7 +30,7 @@ function ProyectoRowContent({
       {dragHandle}
       <span
         className="h-2.5 w-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: proyecto.color }}
+        style={{ backgroundColor: proyecto.color ?? "#64748b" }}
       />
       <Link
         href={`/proyectos/${proyecto.id}/kanban`}
@@ -57,7 +57,7 @@ function SortableProyectoRow({
   proyecto,
   onEdit,
 }: {
-  proyecto: ProyectoItem;
+  proyecto: TareaItem;
   onEdit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -106,10 +106,10 @@ export function ClienteCard({
   onEditCliente: () => void;
   onTogglePredeterminado: () => void;
   onNuevoProyecto: () => void;
-  onEditProyecto: (proyecto: ProyectoItem) => void;
-  onReorderProyectos: (proyectosActivos: ProyectoItem[]) => void;
+  onEditProyecto: (proyecto: TareaItem) => void;
+  onReorderProyectos: (proyectosActivos: TareaItem[]) => void;
 }) {
-  const proyectos = cliente.proyectos ?? [];
+  const proyectos = cliente.tareas ?? [];
   const activos = proyectos.filter((p) => p.activo);
   const archivados = proyectos.filter((p) => !p.activo);
   const [mostrarArchivados, setMostrarArchivados] = useState(false);
@@ -130,7 +130,7 @@ export function ClienteCard({
       reordenados.map((proyecto, index) =>
         proyecto.orden === index
           ? Promise.resolve()
-          : apiPatch(`/api/proyectos/${proyecto.id}`, { orden: index }),
+          : apiPatch(`/api/tareas/${proyecto.id}`, { orden: index }),
       ),
     );
   }
