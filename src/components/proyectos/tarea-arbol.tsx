@@ -169,6 +169,11 @@ function TareaArbolNodo({
       ? hijosDirectosDeTarea
       : hijosDirectosDeTarea.filter((h) => !h.estado?.esFinal)
   ).length > 0;
+  // El Kanban de una hoja solo mostraría una tarjeta (ella misma), sin
+  // sentido. Para la raíz se deja siempre disponible (aunque esté vacía,
+  // para poder empezar a cargarle tareas); para un nodo anidado, solo si
+  // tiene hijos (ver su propio sub-árbol como tablero).
+  const mostrarKanban = tarea.parentId === null || tieneHijos;
 
   async function crearSubtarea() {
     if (!nombreNuevo.trim()) return;
@@ -238,13 +243,15 @@ function TareaArbolNodo({
         >
           <Plus size={13} />
         </button>
-        <Link
-          href={`/proyectos/${tarea.id}/kanban`}
-          title="Ver Kanban"
-          className="shrink-0 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-200"
-        >
-          <Kanban size={13} />
-        </Link>
+        {mostrarKanban && (
+          <Link
+            href={`/proyectos/${tarea.id}/kanban`}
+            title="Ver Kanban"
+            className="shrink-0 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-200"
+          >
+            <Kanban size={13} />
+          </Link>
+        )}
         <button
           onClick={() => onEditar(tarea)}
           title="Editar"
