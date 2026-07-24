@@ -27,6 +27,7 @@ export default function ProyectosPage() {
   const [modal, setModal] = useState<ModalState>(null);
   const [actionError, setActionError] = useState("");
   const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
+  const [mostrarFinalizadas, setMostrarFinalizadas] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -176,9 +177,20 @@ export default function ProyectosPage() {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
           Proyectos
         </h1>
-        <Button onClick={() => setModal({ type: "cliente-new" })}>
-          <Plus size={15} /> Nuevo cliente
-        </Button>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+            <input
+              type="checkbox"
+              checked={mostrarFinalizadas}
+              onChange={(e) => setMostrarFinalizadas(e.target.checked)}
+              className="rounded border-slate-300 dark:border-slate-600"
+            />
+            Mostrar finalizadas
+          </label>
+          <Button onClick={() => setModal({ type: "cliente-new" })}>
+            <Plus size={15} /> Nuevo cliente
+          </Button>
+        </div>
       </div>
 
       {clientes.length === 0 && (
@@ -203,6 +215,7 @@ export default function ProyectosPage() {
             cliente={cliente}
             tareas={tareas}
             estados={estados}
+            mostrarFinalizadas={mostrarFinalizadas}
             onEditCliente={() => setModal({ type: "cliente-edit", cliente })}
             onTogglePredeterminado={() => toggleClientePredeterminado(cliente)}
             onNuevoProyecto={() => setModal({ type: "proyecto-new", clienteId: cliente.id })}

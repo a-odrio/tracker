@@ -14,6 +14,7 @@ export function ClienteSeccion({
   cliente,
   tareas,
   estados,
+  mostrarFinalizadas,
   onEditCliente,
   onTogglePredeterminado,
   onNuevoProyecto,
@@ -25,6 +26,7 @@ export function ClienteSeccion({
   /** Lista plana completa (todos los clientes, toda profundidad). */
   tareas: TareaItem[];
   estados: EstadoItem[];
+  mostrarFinalizadas: boolean;
   onEditCliente: () => void;
   onTogglePredeterminado: () => void;
   onNuevoProyecto: () => void;
@@ -106,6 +108,7 @@ export function ClienteSeccion({
             items={activos}
             tareas={tareas}
             estadoInicialId={estadoInicialId}
+            mostrarFinalizadas={mostrarFinalizadas}
             onTareaCreated={onTareaCreated}
             onTareaSincronizada={onTareaSincronizada}
             onEditar={onEditar}
@@ -138,6 +141,7 @@ export function ClienteSeccion({
                     items={archivados}
                     tareas={tareas}
                     estadoInicialId={estadoInicialId}
+                    mostrarFinalizadas={mostrarFinalizadas}
                     onTareaCreated={onTareaCreated}
                     onTareaSincronizada={onTareaSincronizada}
                     onEditar={onEditar}

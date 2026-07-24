@@ -30,6 +30,7 @@ export function TareaArbolLista({
   items,
   tareas,
   estadoInicialId,
+  mostrarFinalizadas,
   onTareaCreated,
   onTareaSincronizada,
   onEditar,
@@ -39,6 +40,7 @@ export function TareaArbolLista({
   items: TareaItem[];
   tareas: TareaItem[];
   estadoInicialId: number;
+  mostrarFinalizadas: boolean;
   onTareaCreated: (tarea: TareaItem) => void;
   onTareaSincronizada: (tarea: TareaItem) => void;
   onEditar: (tarea: TareaItem) => void;
@@ -49,15 +51,25 @@ export function TareaArbolLista({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
+  // `items` son TODOS los hermanos de este nivel (define el orden real a
+  // persistir); `visibles` es el subconjunto que se muestra y se puede
+  // arrastrar según el filtro de finalizadas. Al reordenar, el subconjunto
+  // reordenado se reinserta en sus mismas posiciones dentro de la lista
+  // completa, para no alterar el orden de las que el filtro deja ocultas.
+  const visibles = mostrarFinalizadas ? items : items.filter((t) => !t.estado?.esFinal);
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = items.findIndex((h) => h.id === active.id);
-    const newIndex = items.findIndex((h) => h.id === over.id);
+    const oldIndex = visibles.findIndex((h) => h.id === active.id);
+    const newIndex = visibles.findIndex((h) => h.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
-    const reordenados = arrayMove(items, oldIndex, newIndex);
+    const visiblesReordenados = arrayMove(visibles, oldIndex, newIndex);
+    const idsReordenados = new Set(visiblesReordenados.map((t) => t.id));
+    const cola = [...visiblesReordenados];
+    const nuevosItems = items.map((t) => (idsReordenados.has(t.id) ? cola.shift()! : t));
     await Promise.all(
-      reordenados.map(async (item, index) => {
+      nuevosItems.map(async (item, index) => {
         if (item.orden === index) return;
         const actualizado = await apiPatch<TareaItem>(`/api/tareas/${item.id}`, { orden: index });
         onTareaSincronizada(actualizado);
@@ -65,7 +77,7 @@ export function TareaArbolLista({
     );
   }
 
-  if (items.length === 0) {
+  if (visibles.length === 0) {
     return vacioLabel ? (
       <p
         className="py-1 text-xs text-slate-400 dark:text-slate-600"
@@ -78,14 +90,15 @@ export function TareaArbolLista({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={items.map((h) => h.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={visibles.map((h) => h.id)} strategy={verticalListSortingStrategy}>
         <ul className="space-y-0.5">
-          {items.map((item) => (
+          {visibles.map((item) => (
             <TareaArbolNodo
               key={item.id}
               tarea={item}
               tareas={tareas}
               estadoInicialId={estadoInicialId}
+              mostrarFinalizadas={mostrarFinalizadas}
               onTareaCreated={onTareaCreated}
               onTareaSincronizada={onTareaSincronizada}
               onEditar={onEditar}
@@ -108,6 +121,7 @@ export function TareaArbolNivel({
   parentId: number;
   tareas: TareaItem[];
   estadoInicialId: number;
+  mostrarFinalizadas: boolean;
   onTareaCreated: (tarea: TareaItem) => void;
   onTareaSincronizada: (tarea: TareaItem) => void;
   onEditar: (tarea: TareaItem) => void;
@@ -121,6 +135,7 @@ function TareaArbolNodo({
   tarea,
   tareas,
   estadoInicialId,
+  mostrarFinalizadas,
   onTareaCreated,
   onTareaSincronizada,
   onEditar,
@@ -129,6 +144,7 @@ function TareaArbolNodo({
   tarea: TareaItem;
   tareas: TareaItem[];
   estadoInicialId: number;
+  mostrarFinalizadas: boolean;
   onTareaCreated: (tarea: TareaItem) => void;
   onTareaSincronizada: (tarea: TareaItem) => void;
   onEditar: (tarea: TareaItem) => void;
@@ -146,7 +162,12 @@ function TareaArbolNodo({
   const [agregando, setAgregando] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState("");
   const [creando, setCreando] = useState(false);
-  const tieneHijos = hijosDirectos(tarea.id, tareas).length > 0;
+  const hijosDirectosDeTarea = hijosDirectos(tarea.id, tareas);
+  const tieneHijos = (
+    mostrarFinalizadas
+      ? hijosDirectosDeTarea
+      : hijosDirectosDeTarea.filter((h) => !h.estado?.esFinal)
+  ).length > 0;
 
   async function crearSubtarea() {
     if (!nombreNuevo.trim()) return;
@@ -261,6 +282,7 @@ function TareaArbolNodo({
             parentId={tarea.id}
             tareas={tareas}
             estadoInicialId={estadoInicialId}
+            mostrarFinalizadas={mostrarFinalizadas}
             onTareaCreated={onTareaCreated}
             onTareaSincronizada={onTareaSincronizada}
             onEditar={onEditar}
