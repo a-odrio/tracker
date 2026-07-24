@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   DndContext,
   PointerSensor,
@@ -11,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronRight, GripVertical, Pencil, Plus } from "lucide-react";
+import { ChevronRight, GripVertical, Kanban, Pencil, Plus } from "lucide-react";
 import { apiPatch, apiPost } from "@/lib/api-client";
 import type { TareaItem } from "@/lib/types";
 import { hijosDirectos } from "@/lib/tarea-tree";
@@ -237,6 +238,13 @@ function TareaArbolNodo({
         >
           <Plus size={13} />
         </button>
+        <Link
+          href={`/proyectos/${tarea.id}/kanban`}
+          title="Ver Kanban"
+          className="shrink-0 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-200"
+        >
+          <Kanban size={13} />
+        </Link>
         <button
           onClick={() => onEditar(tarea)}
           title="Editar"
