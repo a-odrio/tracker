@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
 import type { ClienteItem, EstadoItem, Prioridad, TareaItem, TemaItem } from "@/lib/types";
-import { padreRecienCerrado, raizDe } from "@/lib/tarea-tree";
+import { esHojaEfectiva, padreRecienCerrado, raizDe } from "@/lib/tarea-tree";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
 import { Button, InlineBanner, Modal, MultiSelect } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -61,8 +61,16 @@ export default function TareasPage() {
       .catch((e) => setError((e as Error).message));
   }, []);
 
+  // Solo se listan las hojas efectivas (sin hijos, o con todos los hijos ya
+  // finalizados) — un proyecto/tarea con subtareas todavía abiertas es un
+  // contenedor puro y no aparece acá, igual que en Kanban y en el backlog.
+  const tareasHojaEfectiva = useMemo(
+    () => tareas.filter((t) => esHojaEfectiva(t, tareas)),
+    [tareas],
+  );
+
   const tareasFiltradas = useMemo(() => {
-    return tareas.filter((t) => {
+    return tareasHojaEfectiva.filter((t) => {
       const raiz = raizDe(t, tareas);
       if (clienteIds.length && !clienteIds.includes(raiz.clienteId ?? -1)) {
         return false;
@@ -71,7 +79,7 @@ export default function TareasPage() {
       if (prioridades.length && !prioridades.includes(t.prioridad)) return false;
       return true;
     });
-  }, [tareas, clienteIds, proyectoIds, prioridades]);
+  }, [tareasHojaEfectiva, tareas, clienteIds, proyectoIds, prioridades]);
 
   const estadosOrdenados = useMemo(
     () => [...estados].sort((a, b) => a.orden - b.orden),
@@ -220,13 +228,14 @@ export default function TareasPage() {
               key={estado.id}
               tareas={tareas}
               estado={estado}
-              tareasDelEstado={tareas.filter((t) => t.estadoId === estado.id)}
+              tareasDelEstado={tareasHojaEfectiva.filter((t) => t.estadoId === estado.id)}
               tareasVisibles={tareasFiltradas.filter((t) => t.estadoId === estado.id)}
               expanded={!colapsados.has(estado.id)}
               onToggle={() => toggleColapsado(estado.id)}
               onReorder={(nuevasDelEstado) => {
+                const idsReordenados = new Set(nuevasDelEstado.map((t) => t.id));
                 setTareas((prev) => [
-                  ...prev.filter((t) => t.estadoId !== estado.id),
+                  ...prev.filter((t) => !idsReordenados.has(t.id)),
                   ...nuevasDelEstado,
                 ]);
               }}
