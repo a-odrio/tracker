@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AccentProvider } from "@/components/accent-provider";
 import { Sidebar } from "@/components/sidebar";
 import { GlobalTimerWidget } from "@/components/timetracking/global-timer-widget";
+import { AppDataProvider } from "@/lib/app-data";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,13 +36,15 @@ export default function RootLayout({
       <body className="h-full">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AccentProvider />
-          <div className="flex h-screen">
-            <Sidebar />
-            <main className="flex-1 overflow-auto bg-slate-50 p-6 dark:bg-slate-950">
-              {children}
-            </main>
-          </div>
-          <GlobalTimerWidget />
+          <AppDataProvider>
+            <div className="flex h-screen">
+              <Sidebar />
+              <main className="flex-1 overflow-auto bg-slate-50 p-6 dark:bg-slate-950">
+                {children}
+              </main>
+            </div>
+            <GlobalTimerWidget />
+          </AppDataProvider>
         </ThemeProvider>
       </body>
     </html>

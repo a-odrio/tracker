@@ -13,9 +13,10 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { apiGet, apiPatch } from "@/lib/api-client";
+import { apiPatch } from "@/lib/api-client";
 import type { EstadoItem, TareaItem } from "@/lib/types";
 import { hojasDe, padreRecienCerrado } from "@/lib/tarea-tree";
+import { useAppData } from "@/lib/app-data";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
 import { TaskCard } from "@/components/kanban/task-card";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -32,10 +33,9 @@ export function KanbanBoard({
   estados: EstadoItem[];
   colorPrincipal: string;
 }) {
-  const [todasLasTareas, setTodasLasTareas] = useState<TareaItem[]>([]);
+  const { tareas: todasLasTareas, setTareas: setTodasLasTareas } = useAppData();
   const [columns, setColumnsState] = useState<Columns>({});
   const columnsRef = useRef<Columns>({});
-  const [loading, setLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<TareaItem | null>(null);
   const [editing, setEditing] = useState<TareaItem | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -65,13 +65,9 @@ export function KanbanBoard({
   }
 
   useEffect(() => {
-    apiGet<TareaItem[]>("/api/tareas").then((tareas) => {
-      setTodasLasTareas(tareas);
-      recalcularColumnas(tareas);
-      setLoading(false);
-    });
+    recalcularColumnas(todasLasTareas);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [raiz.id]);
+  }, [todasLasTareas, raiz.id]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -188,10 +184,6 @@ export function KanbanBoard({
     setTodasLasTareas(nuevas);
     recalcularColumnas(nuevas);
     setPadreParaCerrar(null);
-  }
-
-  if (loading) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>;
   }
 
   return (

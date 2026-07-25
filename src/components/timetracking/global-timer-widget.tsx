@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiGet, apiPatch } from "@/lib/api-client";
-import type {
-  ClienteItem,
-  EstadoItem,
-  RegistroTiempoItem,
-  TareaItem,
-  TemaItem,
-  TipoTrabajoItem,
-} from "@/lib/types";
+import type { RegistroTiempoItem, TareaItem } from "@/lib/types";
 import { padreRecienCerrado } from "@/lib/tarea-tree";
+import { useAppData } from "@/lib/app-data";
 import { toDateOnlyISO } from "@/lib/utils";
 import { InlineBanner, Modal } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
@@ -19,41 +13,17 @@ import { TimerBar, type SeedRegistro } from "@/components/timetracking/timer-bar
 
 /**
  * Pastilla flotante con el timer, visible en cualquier pantalla salvo
- * /registro (que ya tiene su propia barra integrada). Mantiene su propio
- * fetch de datos, igual que cada página, para no depender de qué pantalla
- * esté montada debajo; se refresca al cambiar de ruta porque el layout no
- * remonta en la navegación.
+ * /registro (que ya tiene su propia barra integrada). Lee/escribe los datos
+ * compartidos (AppDataProvider) en vez de un fetch propio: cualquier cambio
+ * hecho desde otra pantalla se ve acá al instante, sin esperar a nada.
  */
 export function GlobalTimerWidget() {
   const pathname = usePathname();
-  const [clientes, setClientes] = useState<ClienteItem[]>([]);
-  const [tareas, setTareas] = useState<TareaItem[]>([]);
-  const [tipos, setTipos] = useState<TipoTrabajoItem[]>([]);
-  const [estados, setEstados] = useState<EstadoItem[]>([]);
-  const [tema, setTema] = useState<TemaItem | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { clientesActivos, tareas, setTareas, tiposActivos, setTipos, estados, tema, loading } =
+    useAppData();
   const [seed, setSeed] = useState<SeedRegistro | null>(null);
   const [registrosDelDia, setRegistrosDelDia] = useState<RegistroTiempoItem[]>([]);
   const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
-
-  useEffect(() => {
-    Promise.all([
-      apiGet<ClienteItem[]>("/api/clientes"),
-      apiGet<TareaItem[]>("/api/tareas"),
-      apiGet<TipoTrabajoItem[]>("/api/tipos-trabajo"),
-      apiGet<EstadoItem[]>("/api/estados"),
-      apiGet<TemaItem>("/api/tema"),
-    ])
-      .then(([c, t, ti, e, tm]) => {
-        setClientes(c);
-        setTareas(t);
-        setTipos(ti);
-        setEstados(e);
-        setTema(tm);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [pathname]);
 
   async function abrirRegistroManual(s: SeedRegistro) {
     const fecha = s.fecha ?? toDateOnlyISO(new Date());
@@ -94,9 +64,9 @@ export function GlobalTimerWidget() {
 
       <TimerBar
         floating
-        clientes={clientes}
+        clientes={clientesActivos}
         tareas={tareas}
-        tipos={tipos}
+        tipos={tiposActivos}
         estados={estados}
         colorPrincipal={tema.colorPrincipal}
         onTareaCreated={(tarea) => setTareas((prev) => [...prev, tarea])}
@@ -106,9 +76,9 @@ export function GlobalTimerWidget() {
       {seed && (
         <Modal open onClose={() => setSeed(null)} title="Nuevo registro" size="lg">
           <TimeEntryForm
-            clientes={clientes}
+            clientes={clientesActivos}
             tareas={tareas}
-            tipos={tipos}
+            tipos={tiposActivos}
             estados={estados}
             colorPrincipal={tema.colorPrincipal}
             registrosDelDia={registrosDelDia}

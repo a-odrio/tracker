@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Plus } from "lucide-react";
-import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
-import type { ClienteItem, EstadoItem, TareaItem, TemaItem } from "@/lib/types";
+import { apiDelete, apiPatch } from "@/lib/api-client";
+import type { ClienteItem, TareaItem } from "@/lib/types";
 import { padreRecienCerrado } from "@/lib/tarea-tree";
+import { useAppData } from "@/lib/app-data";
 import { Button, ErrorText, InlineBanner, Modal } from "@/components/ui";
 import { ClienteSeccion } from "@/components/proyectos/cliente-seccion";
 import { ClienteForm } from "@/components/proyectos/cliente-form";
@@ -18,33 +19,12 @@ type ModalState =
   | null;
 
 export default function ProyectosPage() {
-  const [clientes, setClientes] = useState<ClienteItem[]>([]);
-  const [tareas, setTareas] = useState<TareaItem[]>([]);
-  const [estados, setEstados] = useState<EstadoItem[]>([]);
-  const [tema, setTema] = useState<TemaItem | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { clientes, setClientes, tareas, setTareas, estados, tema, loading, error } =
+    useAppData();
   const [modal, setModal] = useState<ModalState>(null);
   const [actionError, setActionError] = useState("");
   const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
   const [mostrarFinalizadas, setMostrarFinalizadas] = useState(false);
-
-  useEffect(() => {
-    Promise.all([
-      apiGet<ClienteItem[]>("/api/clientes?incluirArchivados=true"),
-      apiGet<TareaItem[]>("/api/tareas"),
-      apiGet<EstadoItem[]>("/api/estados"),
-      apiGet<TemaItem>("/api/tema"),
-    ])
-      .then(([c, t, e, tm]) => {
-        setClientes(c);
-        setTareas(t);
-        setEstados(e);
-        setTema(tm);
-        setLoading(false);
-      })
-      .catch((e) => setError((e as Error).message));
-  }, []);
 
   function cerrarModal() {
     setModal(null);

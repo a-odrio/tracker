@@ -14,9 +14,9 @@ import {
   Search,
   Settings,
 } from "lucide-react";
-import { apiGet } from "@/lib/api-client";
 import type { EstadoItem, TareaItem, TemaItem } from "@/lib/types";
 import { ancestros } from "@/lib/tarea-tree";
+import { useAppData } from "@/lib/app-data";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Modal } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -120,29 +120,13 @@ const MAX_RESULTADOS = 8;
  * con dropdown de resultados que al click abre directo el modal de edición
  * de esa tarea, reusando TaskForm. */
 function TareaSearch({ collapsed }: { collapsed: boolean }) {
-  const [tareas, setTareas] = useState<TareaItem[]>([]);
-  const [estados, setEstados] = useState<EstadoItem[]>([]);
-  const [tema, setTema] = useState<TemaItem | null>(null);
-  const [cargado, setCargado] = useState(false);
+  const { tareas, setTareas, estados, tema, loading } = useAppData();
+  const cargado = !loading;
   const [query, setQuery] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [editando, setEditando] = useState<TareaItem | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (cargado) return;
-    Promise.all([
-      apiGet<TareaItem[]>("/api/tareas"),
-      apiGet<EstadoItem[]>("/api/estados"),
-      apiGet<TemaItem>("/api/tema"),
-    ]).then(([t, e, tm]) => {
-      setTareas(t);
-      setEstados(e);
-      setTema(tm);
-      setCargado(true);
-    });
-  }, [cargado]);
 
   useEffect(() => {
     if (!abierto) return;

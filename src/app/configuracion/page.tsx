@@ -1,33 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/api-client";
-import type { EstadoItem, TemaItem, TipoTrabajoItem } from "@/lib/types";
+import { useAppData } from "@/lib/app-data";
 import { EstadosConfig } from "@/components/config/estados-config";
 import { TiposTrabajoConfig } from "@/components/config/tipos-trabajo-config";
 import { ColorPrincipalConfig } from "@/components/config/color-principal-config";
 
 export default function ConfiguracionPage() {
-  const [estados, setEstados] = useState<EstadoItem[]>([]);
-  const [tipos, setTipos] = useState<TipoTrabajoItem[]>([]);
-  const [tema, setTema] = useState<TemaItem | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    Promise.all([
-      apiGet<EstadoItem[]>("/api/estados"),
-      apiGet<TipoTrabajoItem[]>("/api/tipos-trabajo?incluirInactivos=true"),
-      apiGet<TemaItem>("/api/tema"),
-    ])
-      .then(([e, t, tm]) => {
-        setEstados(e);
-        setTipos(t);
-        setTema(tm);
-        setLoading(false);
-      })
-      .catch((e) => setError((e as Error).message));
-  }, []);
+  const { estados, setEstados, tipos, setTipos, tema, setTema, loading, error } = useAppData();
 
   if (error) {
     return (

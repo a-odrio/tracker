@@ -1,9 +1,8 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
-import { apiGet } from "@/lib/api-client";
-import type { EstadoItem, TareaItem, TemaItem } from "@/lib/types";
+import { useAppData } from "@/lib/app-data";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
 
 export default function KanbanPage({
@@ -12,25 +11,8 @@ export default function KanbanPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const [raiz, setRaiz] = useState<TareaItem | null>(null);
-  const [estados, setEstados] = useState<EstadoItem[]>([]);
-  const [tema, setTema] = useState<TemaItem | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      apiGet<TareaItem>(`/api/tareas/${id}`),
-      apiGet<EstadoItem[]>("/api/estados"),
-      apiGet<TemaItem>("/api/tema"),
-    ])
-      .then(([t, e, tm]) => {
-        setRaiz(t);
-        setEstados(e);
-        setTema(tm);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [id]);
+  const { tareas, estados, tema, loading } = useAppData();
+  const raiz = tareas.find((t) => t.id === Number(id)) ?? null;
 
   if (loading) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>;

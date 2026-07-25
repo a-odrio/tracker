@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
-import type { ClienteItem, EstadoItem, Prioridad, TareaItem, TemaItem } from "@/lib/types";
+import { apiDelete, apiPatch } from "@/lib/api-client";
+import type { Prioridad, TareaItem } from "@/lib/types";
 import { esHojaEfectiva, padreRecienCerrado, raizDe } from "@/lib/tarea-tree";
+import { useAppData } from "@/lib/app-data";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
 import { Button, InlineBanner, Modal, MultiSelect } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -12,12 +13,8 @@ import { EstadoTaskGroup } from "@/components/tasks/estado-task-group";
 const PRIORIDADES: Prioridad[] = ["URGENTE", "ALTA", "MEDIA", "BAJA"];
 
 export default function TareasPage() {
-  const [clientes, setClientes] = useState<ClienteItem[]>([]);
-  const [estados, setEstados] = useState<EstadoItem[]>([]);
-  const [tareas, setTareas] = useState<TareaItem[]>([]);
-  const [tema, setTema] = useState<TemaItem | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { clientesActivos: clientes, estados, tareas, setTareas, tema, loading, error } =
+    useAppData();
 
   const [clienteIds, setClienteIds] = useState<number[]>([]);
   const [proyectoIds, setProyectoIds] = useState<number[]>([]);
@@ -43,23 +40,11 @@ export default function TareasPage() {
     : raices;
 
   useEffect(() => {
-    Promise.all([
-      apiGet<ClienteItem[]>("/api/clientes"),
-      apiGet<EstadoItem[]>("/api/estados"),
-      apiGet<TareaItem[]>("/api/tareas"),
-      apiGet<TemaItem>("/api/tema"),
-    ])
-      .then(([c, e, t, tm]) => {
-        setClientes(c);
-        setEstados(e);
-        setTareas(t);
-        setTema(tm);
-        const predeterminado = c.find((cl) => cl.predeterminado);
-        if (predeterminado) setClienteIds([predeterminado.id]);
-        setLoading(false);
-      })
-      .catch((e) => setError((e as Error).message));
-  }, []);
+    const predeterminado = clientes.find((cl) => cl.predeterminado);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- preselect once clientes load
+    if (predeterminado) setClienteIds([predeterminado.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientes.length]);
 
   // Solo se listan las hojas efectivas (sin hijos, o con todos los hijos ya
   // finalizados) — un proyecto/tarea con subtareas todavía abiertas es un

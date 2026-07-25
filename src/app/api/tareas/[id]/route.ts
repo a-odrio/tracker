@@ -15,21 +15,6 @@ async function esDescendiente(raizId: number, candidatoId: number): Promise<bool
   return false;
 }
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const tarea = await prisma.tarea.findUnique({
-    where: { id: Number(id) },
-    include,
-  });
-  if (!tarea) {
-    return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-  }
-  return NextResponse.json(tarea);
-}
-
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

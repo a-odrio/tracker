@@ -10,17 +10,17 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api-client";
-import type { EstadoItem, PlanificacionItem, TareaItem } from "@/lib/types";
+import type { PlanificacionItem } from "@/lib/types";
 import { esHojaEfectiva } from "@/lib/tarea-tree";
+import { useAppData } from "@/lib/app-data";
 import { formatDate, toDateOnlyISO, weekDays, weekRange } from "@/lib/utils";
 import { BacklogColumn } from "@/components/planning/backlog-column";
 import { DayColumn } from "@/components/planning/day-column";
 import { Button } from "@/components/ui";
 
 export default function PlanificacionPage() {
+  const { tareas, estados, loading: datosCargando } = useAppData();
   const [weekAnchor, setWeekAnchor] = useState(new Date());
-  const [tareas, setTareas] = useState<TareaItem[]>([]);
-  const [estados, setEstados] = useState<EstadoItem[]>([]);
   const [planificacion, setPlanificacion] = useState<PlanificacionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,18 +39,6 @@ export default function PlanificacionPage() {
       })
       .catch((e) => setError((e as Error).message));
   }
-
-  useEffect(() => {
-    Promise.all([
-      apiGet<TareaItem[]>("/api/tareas"),
-      apiGet<EstadoItem[]>("/api/estados"),
-    ])
-      .then(([t, e]) => {
-        setTareas(t);
-        setEstados(e);
-      })
-      .catch((e) => setError((e as Error).message));
-  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data refetch on week change
@@ -162,7 +150,7 @@ export default function PlanificacionPage() {
         </div>
       </div>
 
-      {loading ? (
+      {loading || datosCargando ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
       ) : (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>

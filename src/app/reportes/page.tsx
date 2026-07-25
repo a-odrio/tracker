@@ -3,13 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, endOfMonth, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
 import { apiGet } from "@/lib/api-client";
-import type {
-  ClienteItem,
-  PlanificacionItem,
-  RegistroTiempoItem,
-  TareaItem,
-} from "@/lib/types";
+import type { PlanificacionItem, RegistroTiempoItem } from "@/lib/types";
 import { clienteIdDe, raizDe } from "@/lib/tarea-tree";
+import { useAppData } from "@/lib/app-data";
 import { formatDate, sumarMinutosSinSolapar, toDateOnlyISO } from "@/lib/utils";
 import { Button, Section, Select } from "@/components/ui";
 import { BarList, type BarListItem } from "@/components/reports/bar-list";
@@ -23,15 +19,14 @@ function horasSinSolapar(registros: RegistroTiempoItem[]) {
 type Preset = "semana" | "mes" | "30dias";
 
 export default function ReportesPage() {
+  const { clientesActivos: clientes, tareas } = useAppData();
   const [preset, setPreset] = useState<Preset>("mes");
   const [desde, setDesde] = useState(toDateOnlyISO(startOfMonth(new Date())));
   const [hasta, setHasta] = useState(toDateOnlyISO(endOfMonth(new Date())));
   const [clienteFiltro, setClienteFiltro] = useState<number | "">("");
 
-  const [clientes, setClientes] = useState<ClienteItem[]>([]);
   const [registrosRango, setRegistrosRango] = useState<RegistroTiempoItem[]>([]);
   const [registrosTodos, setRegistrosTodos] = useState<RegistroTiempoItem[]>([]);
-  const [tareas, setTareas] = useState<TareaItem[]>([]);
   const [planificacion, setPlanificacion] = useState<PlanificacionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -55,17 +50,13 @@ export default function ReportesPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data refetch on range change
     setLoading(true);
     Promise.all([
-      apiGet<ClienteItem[]>("/api/clientes"),
       apiGet<RegistroTiempoItem[]>(`/api/registros-tiempo?desde=${desde}&hasta=${hasta}`),
       apiGet<RegistroTiempoItem[]>("/api/registros-tiempo"),
-      apiGet<TareaItem[]>("/api/tareas"),
       apiGet<PlanificacionItem[]>(`/api/planificacion?desde=${desde}&hasta=${hasta}`),
     ])
-      .then(([c, rRango, rTodos, t, p]) => {
-        setClientes(c);
+      .then(([rRango, rTodos, p]) => {
         setRegistrosRango(rRango);
         setRegistrosTodos(rTodos);
-        setTareas(t);
         setPlanificacion(p);
         setLoading(false);
       })

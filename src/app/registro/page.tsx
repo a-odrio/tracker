@@ -3,15 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { addWeeks } from "date-fns";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
-import type {
-  ClienteItem,
-  EstadoItem,
-  RegistroTiempoItem,
-  TareaItem,
-  TemaItem,
-  TipoTrabajoItem,
-} from "@/lib/types";
+import type { RegistroTiempoItem, TareaItem } from "@/lib/types";
 import { clienteIdDe, padreRecienCerrado } from "@/lib/tarea-tree";
+import { useAppData } from "@/lib/app-data";
 import {
   formatDate,
   sumarMinutosSinSolapar,
@@ -25,15 +19,19 @@ import { TimerBar } from "@/components/timetracking/timer-bar";
 import { WeekCalendar } from "@/components/timetracking/week-calendar";
 
 export default function RegistroPage() {
+  const {
+    clientesActivos: clientes,
+    tareas,
+    setTareas,
+    tiposActivos: tipos,
+    setTipos,
+    estados,
+    tema,
+    loading: datosCargando,
+  } = useAppData();
   const [weekAnchor, setWeekAnchor] = useState(new Date());
-  const [clientes, setClientes] = useState<ClienteItem[]>([]);
-  const [tareas, setTareas] = useState<TareaItem[]>([]);
-  const [tipos, setTipos] = useState<TipoTrabajoItem[]>([]);
-  const [estados, setEstados] = useState<EstadoItem[]>([]);
-  const [tema, setTema] = useState<TemaItem | null>(null);
   const [registros, setRegistros] = useState<RegistroTiempoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [datosListos, setDatosListos] = useState(false);
   const [error, setError] = useState("");
   const [clienteFiltro, setClienteFiltro] = useState<number | "">("");
   const [showForm, setShowForm] = useState(false);
@@ -50,27 +48,14 @@ export default function RegistroPage() {
   const { start, end } = useMemo(() => weekRange(weekAnchor), [weekAnchor]);
 
   const hayProyectos = tareas.some((t) => t.parentId === null);
+  const datosListos = !datosCargando;
 
   useEffect(() => {
-    Promise.all([
-      apiGet<ClienteItem[]>("/api/clientes"),
-      apiGet<TareaItem[]>("/api/tareas"),
-      apiGet<TipoTrabajoItem[]>("/api/tipos-trabajo"),
-      apiGet<EstadoItem[]>("/api/estados"),
-      apiGet<TemaItem>("/api/tema"),
-    ])
-      .then(([c, t, ti, e, tm]) => {
-        setClientes(c);
-        setTareas(t);
-        setTipos(ti);
-        setEstados(e);
-        setTema(tm);
-        const predeterminado = c.find((cl) => cl.predeterminado);
-        if (predeterminado) setClienteFiltro(predeterminado.id);
-        setDatosListos(true);
-      })
-      .catch((e) => setError((e as Error).message));
-  }, []);
+    const predeterminado = clientes.find((cl) => cl.predeterminado);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- preselect once clientes load
+    if (predeterminado) setClienteFiltro(predeterminado.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientes.length]);
 
   function cargarSemana() {
     setLoading(true);
