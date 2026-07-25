@@ -15,6 +15,8 @@ import { minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
 import { Button, ErrorText, Select } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
 import { TareaPicker } from "@/components/tasks/tarea-picker";
+import { useClienteProyectoSelector } from "@/components/timetracking/use-cliente-proyecto-selector";
+import { SubVistaPanel } from "@/components/timetracking/subvista-panel";
 
 type SubVista = "form" | "nuevo-proyecto";
 
@@ -82,14 +84,28 @@ export function TimerBar({
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
 
+  // El id inicial de tarea replica el de proyecto (loguear "contra el
+  // proyecto en general" por defecto) — se recalcula solo una vez, en el
+  // primer render; después lo maneja `onProyectoCambiado` más abajo.
   const clienteIdInicial =
     clienteInicial ?? clientes.find((c) => c.predeterminado)?.id ?? clientes[0]?.id ?? "";
-  const [clienteId, setClienteId] = useState<number | "">(clienteIdInicial);
-  const raicesDelClienteInicial = tareas.filter(
-    (t) => t.parentId === null && t.clienteId === clienteIdInicial,
-  );
-  const [proyectoId, setProyectoId] = useState(raicesDelClienteInicial[0]?.id ?? 0);
-  const [tareaId, setTareaId] = useState<number>(proyectoId);
+  const proyectoIdInicial =
+    tareas.find((t) => t.parentId === null && t.clienteId === clienteIdInicial)?.id ?? 0;
+  const [tareaId, setTareaId] = useState<number>(proyectoIdInicial);
+  const {
+    clienteId,
+    setClienteId,
+    proyectoId,
+    setProyectoId,
+    proyectosFiltrados,
+    cambiarCliente,
+    cambiarProyecto,
+  } = useClienteProyectoSelector({
+    clientes,
+    tareas,
+    clienteInicial,
+    onProyectoCambiado: setTareaId,
+  });
   const [tipoTrabajoId, setTipoTrabajoId] = useState(tipos[0]?.id ?? 0);
 
   useEffect(() => {
@@ -104,25 +120,7 @@ export function TimerBar({
     return () => clearInterval(id);
   }, [timer]);
 
-  const proyectosFiltrados = tareas.filter(
-    (t) => t.parentId === null && (!clienteId || t.clienteId === clienteId),
-  );
   const proyectoActual = tareas.find((t) => t.id === proyectoId);
-
-  function cambiarCliente(id: number) {
-    setClienteId(id);
-    const disponibles = tareas.filter((t) => t.parentId === null && t.clienteId === id);
-    if (!disponibles.some((t) => t.id === proyectoId)) {
-      const nuevoProyectoId = disponibles[0]?.id ?? 0;
-      setProyectoId(nuevoProyectoId);
-      setTareaId(nuevoProyectoId);
-    }
-  }
-
-  function cambiarProyecto(id: number) {
-    setProyectoId(id);
-    setTareaId(id);
-  }
 
   async function iniciar() {
     setError("");
@@ -180,16 +178,7 @@ export function TimerBar({
 
   if (subVista === "nuevo-proyecto") {
     return (
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-        <button
-          onClick={() => setSubVista("form")}
-          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-        >
-          ← Volver
-        </button>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          Nuevo proyecto
-        </h3>
+      <SubVistaPanel titulo="Nuevo proyecto" contenedor onVolver={() => setSubVista("form")}>
         <TaskForm
           colorPrincipal={colorPrincipal}
           clientes={clientes}
@@ -206,7 +195,7 @@ export function TimerBar({
           onDone={() => setSubVista("form")}
           onCancel={() => setSubVista("form")}
         />
-      </div>
+      </SubVistaPanel>
     );
   }
 

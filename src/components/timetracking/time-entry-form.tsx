@@ -23,6 +23,8 @@ import {
 import { TaskForm } from "@/components/tasks/task-form";
 import { TareaPicker } from "@/components/tasks/tarea-picker";
 import { TipoTrabajoForm } from "@/components/config/tipo-trabajo-form";
+import { useClienteProyectoSelector } from "@/components/timetracking/use-cliente-proyecto-selector";
+import { SubVistaPanel } from "@/components/timetracking/subvista-panel";
 
 type SubVista = "form" | "nuevo-proyecto" | "nuevo-tipo";
 
@@ -86,22 +88,26 @@ export function TimeEntryForm({
       ? tareas.find((t) => t.id === valoresIniciales.tareaId)
       : undefined;
   const raizInicial = tareaSeedInicial ? raizDe(tareaSeedInicial, tareas) : undefined;
+  const clienteInicialCombinado = raizInicial?.clienteId ?? clienteInicial;
 
+  // El id inicial de tarea sigue al de la tarea/registro que se esté
+  // editando, o si no al de proyecto — se recalcula solo una vez, en el
+  // primer render; después lo maneja `cambiarTarea` más abajo.
   const clienteIdInicial =
-    raizInicial?.clienteId ??
-    clienteInicial ??
-    clientes.find((c) => c.predeterminado)?.id ??
-    clientes[0]?.id ??
-    "";
-  const raicesDelClienteInicial = tareas.filter(
-    (t) => t.parentId === null && t.clienteId === clienteIdInicial,
-  );
-
-  const [clienteId, setClienteId] = useState<number | "">(clienteIdInicial);
-  const [proyectoId, setProyectoId] = useState(
-    raizInicial?.id ?? raicesDelClienteInicial[0]?.id ?? 0,
-  );
-  const [tareaId, setTareaId] = useState<number>(tareaSeedInicial?.id ?? proyectoId);
+    clienteInicialCombinado ?? clientes.find((c) => c.predeterminado)?.id ?? clientes[0]?.id ?? "";
+  const proyectoIdInicial =
+    raizInicial?.id ??
+    tareas.find((t) => t.parentId === null && t.clienteId === clienteIdInicial)?.id ??
+    0;
+  const [tareaId, setTareaId] = useState<number>(tareaSeedInicial?.id ?? proyectoIdInicial);
+  const { clienteId, proyectoId, proyectosFiltrados, cambiarCliente, cambiarProyecto } =
+    useClienteProyectoSelector({
+      clientes,
+      tareas,
+      clienteInicial: clienteInicialCombinado,
+      proyectoInicial: raizInicial?.id,
+      onProyectoCambiado: cambiarTarea,
+    });
   const [tipoTrabajoId, setTipoTrabajoId] = useState(
     registro?.tipoTrabajoId ?? tipos[0]?.id ?? 0,
   );
@@ -117,25 +123,6 @@ export function TimeEntryForm({
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const proyectosFiltrados = tareas.filter(
-    (t) => t.parentId === null && (!clienteId || t.clienteId === clienteId),
-  );
-
-  function cambiarCliente(id: number) {
-    setClienteId(id);
-    const disponibles = tareas.filter((t) => t.parentId === null && t.clienteId === id);
-    if (!disponibles.some((t) => t.id === proyectoId)) {
-      const nuevoProyectoId = disponibles[0]?.id ?? 0;
-      setProyectoId(nuevoProyectoId);
-      cambiarTarea(nuevoProyectoId);
-    }
-  }
-
-  function cambiarProyecto(id: number) {
-    setProyectoId(id);
-    cambiarTarea(id);
-  }
 
   function cambiarTarea(id: number) {
     setTareaId(id);
@@ -190,16 +177,11 @@ export function TimeEntryForm({
 
   if (subVista === "nuevo-proyecto") {
     return (
-      <div className="space-y-3">
-        <button
-          onClick={() => setSubVista("form")}
-          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-        >
-          ← Volver al registro
-        </button>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          Nuevo proyecto
-        </h3>
+      <SubVistaPanel
+        titulo="Nuevo proyecto"
+        volverLabel="← Volver al registro"
+        onVolver={() => setSubVista("form")}
+      >
         <TaskForm
           colorPrincipal={colorPrincipal}
           clientes={clientes}
@@ -211,22 +193,17 @@ export function TimeEntryForm({
           onDone={() => setSubVista("form")}
           onCancel={() => setSubVista("form")}
         />
-      </div>
+      </SubVistaPanel>
     );
   }
 
   if (subVista === "nuevo-tipo") {
     return (
-      <div className="space-y-3">
-        <button
-          onClick={() => setSubVista("form")}
-          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-        >
-          ← Volver al registro
-        </button>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          Nuevo tipo de trabajo
-        </h3>
+      <SubVistaPanel
+        titulo="Nuevo tipo de trabajo"
+        volverLabel="← Volver al registro"
+        onVolver={() => setSubVista("form")}
+      >
         <TipoTrabajoForm
           onSaved={(tipo) => {
             onTipoCreated(tipo);
@@ -235,7 +212,7 @@ export function TimeEntryForm({
           }}
           onCancel={() => setSubVista("form")}
         />
-      </div>
+      </SubVistaPanel>
     );
   }
 
