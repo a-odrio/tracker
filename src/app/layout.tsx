@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AccentProvider } from "@/components/accent-provider";
 import { Sidebar } from "@/components/sidebar";
+import { GlobalTimerWidget } from "@/components/timetracking/global-timer-widget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,7 @@ export default function RootLayout({
               {children}
             </main>
           </div>
+          <GlobalTimerWidget />
         </ThemeProvider>
       </body>
     </html>
