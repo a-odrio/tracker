@@ -10,8 +10,9 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { apiGet } from "@/lib/api-client";
+import { apiGet, apiPatch } from "@/lib/api-client";
 import type { ClienteItem, EstadoItem, TareaItem, TemaItem, TipoTrabajoItem } from "@/lib/types";
+import { padreRecienCerrado } from "@/lib/tarea-tree";
 
 type AppData = {
   /** Todos los clientes, incluidos archivados — usar `clientesActivos` donde
@@ -32,6 +33,21 @@ type AppData = {
   setEstados: Dispatch<SetStateAction<EstadoItem[]>>;
   setTipos: Dispatch<SetStateAction<TipoTrabajoItem[]>>;
   setTema: Dispatch<SetStateAction<TemaItem | null>>;
+  /** Reemplaza `tareas` por `nuevas` y, si ese cambio cerró (esFinal) el
+   * último hijo abierto de alguna tarea en `idsAfectados`, dispara el aviso
+   * de "se completaron todas las subtareas" (`padreParaCerrar`). */
+  sincronizarTareas: (nuevas: TareaItem[], idsAfectados: number[]) => void;
+  /** Atajo de `sincronizarTareas` para el caso más común: una tarea creada o
+   * editada (la reemplaza si ya existe, la agrega si es nueva). */
+  upsertTarea: (tarea: TareaItem) => void;
+  /** Tarea cuyo último hijo abierto se acaba de cerrar — null si no hay
+   * ningún aviso pendiente. Un solo estado compartido por toda la app, para
+   * que el aviso se vea sin importar desde qué pantalla o widget (Kanban,
+   * timer flotante, etc.) se disparó el cambio. */
+  padreParaCerrar: TareaItem | null;
+  dismissPadreParaCerrar: () => void;
+  /** Lleva `padreParaCerrar` al estado `esFinal` fijo y limpia el aviso. */
+  finalizarPadre: () => Promise<void>;
 };
 
 const AppDataContext = createContext<AppData | null>(null);
@@ -52,6 +68,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [tema, setTema] = useState<TemaItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -75,6 +92,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const clientesActivos = useMemo(() => clientes.filter((c) => c.activo), [clientes]);
   const tiposActivos = useMemo(() => tipos.filter((t) => t.activo), [tipos]);
 
+  function sincronizarTareas(nuevas: TareaItem[], idsAfectados: number[]) {
+    const antes = tareas;
+    setTareas(nuevas);
+    for (const id of idsAfectados) {
+      const padre = padreRecienCerrado(id, antes, nuevas);
+      if (padre) {
+        setPadreParaCerrar(padre);
+        break;
+      }
+    }
+  }
+
+  function upsertTarea(tarea: TareaItem) {
+    const existe = tareas.some((t) => t.id === tarea.id);
+    const nuevas = existe ? tareas.map((t) => (t.id === tarea.id ? tarea : t)) : [...tareas, tarea];
+    sincronizarTareas(nuevas, [tarea.id]);
+  }
+
+  async function finalizarPadre() {
+    if (!padreParaCerrar) return;
+    const estadoFinal = estados.find((e) => e.esFinal);
+    if (!estadoFinal) return;
+    const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
+      estadoId: estadoFinal.id,
+    });
+    setTareas((prev) => prev.map((t) => (t.id === actualizado.id ? actualizado : t)));
+    setPadreParaCerrar(null);
+  }
+
   return (
     <AppDataContext.Provider
       value={{
@@ -92,6 +138,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setEstados,
         setTipos,
         setTema,
+        sincronizarTareas,
+        upsertTarea,
+        padreParaCerrar,
+        dismissPadreParaCerrar: () => setPadreParaCerrar(null),
+        finalizarPadre,
       }}
     >
       {children}

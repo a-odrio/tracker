@@ -15,12 +15,12 @@ import {
 import { arrayMove } from "@dnd-kit/sortable";
 import { apiPatch } from "@/lib/api-client";
 import type { EstadoItem, TareaItem } from "@/lib/types";
-import { hojasDe, padreRecienCerrado } from "@/lib/tarea-tree";
+import { hojasDe } from "@/lib/tarea-tree";
 import { useAppData } from "@/lib/app-data";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
 import { TaskCard } from "@/components/kanban/task-card";
 import { TaskForm } from "@/components/tasks/task-form";
-import { Button, InlineBanner, Modal } from "@/components/ui";
+import { Button, Modal } from "@/components/ui";
 
 type Columns = Record<number, TareaItem[]>;
 
@@ -33,13 +33,12 @@ export function KanbanBoard({
   estados: EstadoItem[];
   colorPrincipal: string;
 }) {
-  const { tareas: todasLasTareas, setTareas: setTodasLasTareas } = useAppData();
+  const { tareas: todasLasTareas, upsertTarea, sincronizarTareas } = useAppData();
   const [columns, setColumnsState] = useState<Columns>({});
   const columnsRef = useRef<Columns>({});
   const [activeTask, setActiveTask] = useState<TareaItem | null>(null);
   const [editing, setEditing] = useState<TareaItem | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
 
   const ordenados = [...estados].sort((a, b) => a.orden - b.orden);
 
@@ -163,27 +162,7 @@ export function KanbanBoard({
     const tareasDespues = todasLasTareas.map(
       (t) => actualizados.find((a) => a.id === t.id) ?? t,
     );
-    setTodasLasTareas(tareasDespues);
-    for (const actualizado of actualizados) {
-      const padre = padreRecienCerrado(actualizado.id, todasLasTareas, tareasDespues);
-      if (padre) {
-        setPadreParaCerrar(padre);
-        break;
-      }
-    }
-  }
-
-  async function finalizarPadre() {
-    if (!padreParaCerrar) return;
-    const estadoFinal = estados.find((e) => e.esFinal);
-    if (!estadoFinal) return;
-    const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
-      estadoId: estadoFinal.id,
-    });
-    const nuevas = todasLasTareas.map((t) => (t.id === actualizado.id ? actualizado : t));
-    setTodasLasTareas(nuevas);
-    recalcularColumnas(nuevas);
-    setPadreParaCerrar(null);
+    sincronizarTareas(tareasDespues, actualizados.map((a) => a.id));
   }
 
   return (
@@ -204,15 +183,6 @@ export function KanbanBoard({
         </Button>
       </div>
 
-      {padreParaCerrar && (
-        <InlineBanner
-          text={`Se completaron todas las subtareas de "${padreParaCerrar.nombre}".`}
-          actionLabel="Finalizar tarea"
-          onAction={finalizarPadre}
-          onDismiss={() => setPadreParaCerrar(null)}
-        />
-      )}
-
       <Modal
         open={showForm || !!editing}
         onClose={() => {
@@ -228,16 +198,7 @@ export function KanbanBoard({
           colorPrincipal={colorPrincipal}
           tarea={editing ?? undefined}
           parentId={raiz.id}
-          onSaved={(tarea) => {
-            const antes = todasLasTareas;
-            const nuevas = antes.some((t) => t.id === tarea.id)
-              ? antes.map((t) => (t.id === tarea.id ? tarea : t))
-              : [...antes, tarea];
-            setTodasLasTareas(nuevas);
-            recalcularColumnas(nuevas);
-            const padre = padreRecienCerrado(tarea.id, antes, nuevas);
-            if (padre) setPadreParaCerrar(padre);
-          }}
+          onSaved={upsertTarea}
           onDone={() => {
             setEditing(null);
             setShowForm(false);

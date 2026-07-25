@@ -4,9 +4,8 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { apiDelete, apiPatch } from "@/lib/api-client";
 import type { ClienteItem, TareaItem } from "@/lib/types";
-import { padreRecienCerrado } from "@/lib/tarea-tree";
 import { useAppData } from "@/lib/app-data";
-import { Button, ErrorText, InlineBanner, Modal } from "@/components/ui";
+import { Button, ErrorText, Modal } from "@/components/ui";
 import { ClienteSeccion } from "@/components/proyectos/cliente-seccion";
 import { ClienteForm } from "@/components/proyectos/cliente-form";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -19,11 +18,10 @@ type ModalState =
   | null;
 
 export default function ProyectosPage() {
-  const { clientes, setClientes, tareas, setTareas, estados, tema, loading, error } =
+  const { clientes, setClientes, tareas, setTareas, upsertTarea, estados, tema, loading, error } =
     useAppData();
   const [modal, setModal] = useState<ModalState>(null);
   const [actionError, setActionError] = useState("");
-  const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
   const [mostrarFinalizadas, setMostrarFinalizadas] = useState(false);
 
   function cerrarModal() {
@@ -36,32 +34,6 @@ export default function ProyectosPage() {
       const existe = prev.some((c) => c.id === cliente.id);
       return existe ? prev.map((c) => (c.id === cliente.id ? cliente : c)) : [...prev, cliente];
     });
-  }
-
-  /** Sincroniza cualquier tarea creada/editada/reordenada (raíz o subtarea,
-   * cualquier profundidad) y detecta si con ese cambio un padre se quedó
-   * sin subtareas abiertas. */
-  function onTareaGuardada(tarea: TareaItem) {
-    setTareas((prev) => {
-      const existe = prev.some((t) => t.id === tarea.id);
-      const nuevas = existe
-        ? prev.map((t) => (t.id === tarea.id ? tarea : t))
-        : [...prev, tarea];
-      const padre = padreRecienCerrado(tarea.id, prev, nuevas);
-      if (padre) setPadreParaCerrar(padre);
-      return nuevas;
-    });
-  }
-
-  async function finalizarPadre() {
-    if (!padreParaCerrar) return;
-    const estadoFinal = estados.find((e) => e.esFinal);
-    if (!estadoFinal) return;
-    const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
-      estadoId: estadoFinal.id,
-    });
-    setTareas((prev) => prev.map((t) => (t.id === actualizado.id ? actualizado : t)));
-    setPadreParaCerrar(null);
   }
 
   async function toggleClienteActivo(cliente: ClienteItem) {
@@ -110,7 +82,7 @@ export default function ProyectosPage() {
       const actualizado = await apiPatch<TareaItem>(`/api/tareas/${tarea.id}`, {
         activo: !tarea.activo,
       });
-      onTareaGuardada(actualizado);
+      upsertTarea(actualizado);
       cerrarModal();
     } catch (e) {
       setActionError((e as Error).message);
@@ -179,15 +151,6 @@ export default function ProyectosPage() {
         </p>
       )}
 
-      {padreParaCerrar && (
-        <InlineBanner
-          text={`Se completaron todas las subtareas de "${padreParaCerrar.nombre}".`}
-          actionLabel="Finalizar tarea"
-          onAction={finalizarPadre}
-          onDismiss={() => setPadreParaCerrar(null)}
-        />
-      )}
-
       <div className="space-y-4">
         {clientes.map((cliente) => (
           <ClienteSeccion
@@ -200,8 +163,8 @@ export default function ProyectosPage() {
             onTogglePredeterminado={() => toggleClientePredeterminado(cliente)}
             onNuevoProyecto={() => setModal({ type: "proyecto-new", clienteId: cliente.id })}
             onEditar={(tarea) => setModal({ type: "tarea-edit", tarea })}
-            onTareaCreated={onTareaGuardada}
-            onTareaSincronizada={onTareaGuardada}
+            onTareaCreated={upsertTarea}
+            onTareaSincronizada={upsertTarea}
           />
         ))}
       </div>
@@ -254,7 +217,7 @@ export default function ProyectosPage() {
             tareas={tareas}
             estados={estados}
             parentId={null}
-            onSaved={onTareaGuardada}
+            onSaved={upsertTarea}
             onDone={cerrarModal}
             onCancel={cerrarModal}
           />
@@ -267,7 +230,7 @@ export default function ProyectosPage() {
               tareas={tareas}
               estados={estados}
               tarea={modal.tarea}
-              onSaved={onTareaGuardada}
+              onSaved={upsertTarea}
               onDone={cerrarModal}
               onCancel={cerrarModal}
             />

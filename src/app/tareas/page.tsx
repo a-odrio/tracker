@@ -1,20 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiDelete, apiPatch } from "@/lib/api-client";
+import { apiDelete } from "@/lib/api-client";
 import type { Prioridad, TareaItem } from "@/lib/types";
-import { esHojaEfectiva, padreRecienCerrado, raizDe } from "@/lib/tarea-tree";
+import { esHojaEfectiva, raizDe } from "@/lib/tarea-tree";
 import { useAppData } from "@/lib/app-data";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
-import { Button, InlineBanner, Modal, MultiSelect } from "@/components/ui";
+import { Button, Modal, MultiSelect } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
 import { EstadoTaskGroup } from "@/components/tasks/estado-task-group";
 
 const PRIORIDADES: Prioridad[] = ["URGENTE", "ALTA", "MEDIA", "BAJA"];
 
 export default function TareasPage() {
-  const { clientesActivos: clientes, estados, tareas, setTareas, tema, loading, error } =
-    useAppData();
+  const {
+    clientesActivos: clientes,
+    estados,
+    tareas,
+    setTareas,
+    upsertTarea,
+    tema,
+    loading,
+    error,
+  } = useAppData();
 
   const [clienteIds, setClienteIds] = useState<number[]>([]);
   const [proyectoIds, setProyectoIds] = useState<number[]>([]);
@@ -23,7 +31,6 @@ export default function TareasPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TareaItem | null>(null);
   const [colapsados, setColapsados] = useState<Set<number>>(new Set());
-  const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
 
   function toggleColapsado(estadoId: number) {
     setColapsados((prev) => {
@@ -81,17 +88,6 @@ export default function TareasPage() {
     }
   }
 
-  async function finalizarPadre() {
-    if (!padreParaCerrar) return;
-    const estadoFinal = estados.find((e) => e.esFinal);
-    if (!estadoFinal) return;
-    const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
-      estadoId: estadoFinal.id,
-    });
-    setTareas((prev) => prev.map((t) => (t.id === actualizado.id ? actualizado : t)));
-    setPadreParaCerrar(null);
-  }
-
   if (error) {
     return (
       <p className="text-sm text-red-600 dark:text-red-400">
@@ -124,15 +120,6 @@ export default function TareasPage() {
         </p>
       )}
 
-      {padreParaCerrar && (
-        <InlineBanner
-          text={`Se completaron todas las subtareas de "${padreParaCerrar.nombre}".`}
-          actionLabel="Finalizar tarea"
-          onAction={finalizarPadre}
-          onDismiss={() => setPadreParaCerrar(null)}
-        />
-      )}
-
       <Modal
         open={(showForm || !!editing) && raices.length > 0 && !!tema}
         onClose={() => {
@@ -149,16 +136,7 @@ export default function TareasPage() {
           estados={estados}
           colorPrincipal={tema.colorPrincipal}
           tarea={editing ?? undefined}
-          onSaved={(tarea) => {
-            const antes = tareas;
-            const exists = antes.some((t) => t.id === tarea.id);
-            const nuevas = exists
-              ? antes.map((t) => (t.id === tarea.id ? tarea : t))
-              : [...antes, tarea];
-            setTareas(nuevas);
-            const padre = padreRecienCerrado(tarea.id, antes, nuevas);
-            if (padre) setPadreParaCerrar(padre);
-          }}
+          onSaved={upsertTarea}
           onDone={() => {
             setEditing(null);
             setShowForm(false);

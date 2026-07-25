@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { addWeeks } from "date-fns";
-import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
-import type { RegistroTiempoItem, TareaItem } from "@/lib/types";
-import { clienteIdDe, padreRecienCerrado } from "@/lib/tarea-tree";
+import { apiDelete, apiGet } from "@/lib/api-client";
+import type { RegistroTiempoItem } from "@/lib/types";
+import { clienteIdDe } from "@/lib/tarea-tree";
 import { useAppData } from "@/lib/app-data";
 import {
   formatDate,
@@ -13,7 +13,7 @@ import {
   weekDays,
   weekRange,
 } from "@/lib/utils";
-import { Button, InlineBanner, Modal, Select } from "@/components/ui";
+import { Button, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
 import { TimerBar } from "@/components/timetracking/timer-bar";
 import { WeekCalendar } from "@/components/timetracking/week-calendar";
@@ -22,7 +22,7 @@ export default function RegistroPage() {
   const {
     clientesActivos: clientes,
     tareas,
-    setTareas,
+    upsertTarea,
     tiposActivos: tipos,
     setTipos,
     estados,
@@ -42,7 +42,6 @@ export default function RegistroPage() {
     horaFin?: string;
     tareaId?: number;
   } | null>(null);
-  const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
 
   const dias = useMemo(() => weekDays(weekAnchor), [weekAnchor]);
   const { start, end } = useMemo(() => weekRange(weekAnchor), [weekAnchor]);
@@ -82,17 +81,6 @@ export default function RegistroPage() {
     setEditing(null);
     setSeleccion(null);
     setShowForm(false);
-  }
-
-  async function finalizarPadre() {
-    if (!padreParaCerrar) return;
-    const estadoFinal = estados.find((e) => e.esFinal);
-    if (!estadoFinal) return;
-    const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
-      estadoId: estadoFinal.id,
-    });
-    setTareas((prev) => prev.map((t) => (t.id === actualizado.id ? actualizado : t)));
-    setPadreParaCerrar(null);
   }
 
   const registrosFiltrados = clienteFiltro
@@ -142,7 +130,7 @@ export default function RegistroPage() {
             estados={estados}
             colorPrincipal={tema.colorPrincipal}
             clienteInicial={clienteFiltro || undefined}
-            onTareaCreated={(tarea) => setTareas((prev) => [...prev, tarea])}
+            onTareaCreated={upsertTarea}
             onAbrirRegistro={(seed) => {
               setEditing(null);
               setSeleccion(seed);
@@ -183,15 +171,6 @@ export default function RegistroPage() {
         </p>
       )}
 
-      {padreParaCerrar && (
-        <InlineBanner
-          text={`Se completaron todas las subtareas de "${padreParaCerrar.nombre}".`}
-          actionLabel="Finalizar tarea"
-          onAction={finalizarPadre}
-          onDismiss={() => setPadreParaCerrar(null)}
-        />
-      )}
-
       {tema && (
         <Modal
           open={(showForm || !!editing) && hayProyectos}
@@ -219,7 +198,7 @@ export default function RegistroPage() {
             registro={editing ?? undefined}
             clienteInicial={clienteFiltro || undefined}
             valoresIniciales={seleccion ?? undefined}
-            onTareaCreated={(tarea) => setTareas((prev) => [...prev, tarea])}
+            onTareaCreated={upsertTarea}
             onTipoCreated={(tipo) => setTipos((prev) => [...prev, tipo])}
             onSaved={(registro) => {
               setRegistros((prev) => {
@@ -228,16 +207,7 @@ export default function RegistroPage() {
                   ? prev.map((r) => (r.id === registro.id ? registro : r))
                   : [...prev, registro];
               });
-              if (registro.tarea) {
-                const tareaActualizada = registro.tarea;
-                const antes = tareas;
-                const nuevas = antes.map((t) =>
-                  t.id === tareaActualizada.id ? { ...t, ...tareaActualizada } : t,
-                );
-                setTareas(nuevas);
-                const padre = padreRecienCerrado(tareaActualizada.id, antes, nuevas);
-                if (padre) setPadreParaCerrar(padre);
-              }
+              if (registro.tarea) upsertTarea(registro.tarea);
               setEditing(null);
               setSeleccion(null);
               setShowForm(false);
