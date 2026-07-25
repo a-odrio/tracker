@@ -10,7 +10,7 @@ import type {
   TareaItem,
   TipoTrabajoItem,
 } from "@/lib/types";
-import { descendientesIndentados, raizDe } from "@/lib/tarea-tree";
+import { raizDe } from "@/lib/tarea-tree";
 import { timeToMinutes, toDateOnlyISO } from "@/lib/utils";
 import {
   Button,
@@ -21,9 +21,10 @@ import {
   Textarea,
 } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
+import { TareaPicker } from "@/components/tasks/tarea-picker";
 import { TipoTrabajoForm } from "@/components/config/tipo-trabajo-form";
 
-type SubVista = "form" | "nuevo-proyecto" | "nueva-tarea" | "nuevo-tipo";
+type SubVista = "form" | "nuevo-proyecto" | "nuevo-tipo";
 
 /** Estado a mostrar por defecto para una tarea: el actual, salvo que sea el
  * estado inicial, en cuyo caso se previsualiza el siguiente (misma regla que
@@ -184,9 +185,7 @@ export function TimeEntryForm({
     }
   }
 
-  const descendientes = descendientesIndentados(proyectoId, tareas).filter(
-    (d) => !d.tarea.estado?.esFinal || d.tarea.id === registro?.tareaId,
-  );
+  const proyectoActual = tareas.find((t) => t.id === proyectoId);
   const estadosOrdenados = [...estados].sort((a, b) => a.orden - b.orden);
 
   if (subVista === "nuevo-proyecto") {
@@ -240,31 +239,6 @@ export function TimeEntryForm({
     );
   }
 
-  if (subVista === "nueva-tarea") {
-    return (
-      <div className="space-y-3">
-        <button
-          onClick={() => setSubVista("form")}
-          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-        >
-          ← Volver al registro
-        </button>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          Nueva tarea
-        </h3>
-        <TaskForm
-          colorPrincipal={colorPrincipal}
-          tareas={tareas}
-          estados={estados}
-          parentId={proyectoId}
-          onSaved={onTareaCreated}
-          onDone={() => setSubVista("form")}
-          onCancel={() => setSubVista("form")}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -308,29 +282,21 @@ export function TimeEntryForm({
           </Select>
         </div>
         <div>
-          <div className="mb-1 flex items-center justify-between">
-            <Label>Tarea</Label>
-            <button
-              type="button"
-              onClick={() => setSubVista("nueva-tarea")}
-              disabled={!proyectoId}
-              className="flex items-center gap-0.5 text-xs font-medium text-[var(--accent-primary)] hover:underline disabled:opacity-40"
-            >
-              <Plus size={11} /> Nueva
-            </button>
-          </div>
-          <Select
-            value={tareaId}
-            onChange={(e) => cambiarTarea(Number(e.target.value))}
-          >
-            <option value={proyectoId}>— (proyecto en general)</option>
-            {descendientes.map(({ tarea: t, profundidad }) => (
-              <option key={t.id} value={t.id}>
-                {"— ".repeat(profundidad + 1)}
-                {t.nombre}
-              </option>
-            ))}
-          </Select>
+          <Label>Tarea</Label>
+          {proyectoActual ? (
+            <TareaPicker
+              proyecto={proyectoActual}
+              tareas={tareas}
+              estados={estados}
+              tareaId={tareaId}
+              onSeleccionar={cambiarTarea}
+              onTareaCreated={onTareaCreated}
+            />
+          ) : (
+            <div className="flex h-[34px] items-center rounded-md border border-slate-200 px-2.5 text-sm text-slate-400 dark:border-slate-800">
+              Sin proyecto
+            </div>
+          )}
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between">

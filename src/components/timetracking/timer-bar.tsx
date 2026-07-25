@@ -10,12 +10,13 @@ import type {
   TimerActivoItem,
   TipoTrabajoItem,
 } from "@/lib/types";
-import { descendientesIndentados, raizDe } from "@/lib/tarea-tree";
+import { raizDe } from "@/lib/tarea-tree";
 import { minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
 import { Button, ErrorText, Select } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
+import { TareaPicker } from "@/components/tasks/tarea-picker";
 
-type SubVista = "form" | "nuevo-proyecto" | "nueva-tarea";
+type SubVista = "form" | "nuevo-proyecto";
 
 export type SeedRegistro = {
   tareaId?: number;
@@ -106,9 +107,7 @@ export function TimerBar({
   const proyectosFiltrados = tareas.filter(
     (t) => t.parentId === null && (!clienteId || t.clienteId === clienteId),
   );
-  const descendientes = descendientesIndentados(proyectoId, tareas).filter(
-    (d) => !d.tarea.estado?.esFinal,
-  );
+  const proyectoActual = tareas.find((t) => t.id === proyectoId);
 
   function cambiarCliente(id: number) {
     setClienteId(id);
@@ -203,34 +202,6 @@ export function TimerBar({
             setClienteId(proyecto.clienteId ?? clienteId);
             setProyectoId(proyecto.id);
             setTareaId(proyecto.id);
-          }}
-          onDone={() => setSubVista("form")}
-          onCancel={() => setSubVista("form")}
-        />
-      </div>
-    );
-  }
-
-  if (subVista === "nueva-tarea") {
-    return (
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-        <button
-          onClick={() => setSubVista("form")}
-          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-        >
-          ← Volver
-        </button>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          Nueva tarea
-        </h3>
-        <TaskForm
-          colorPrincipal={colorPrincipal}
-          tareas={tareas}
-          estados={estados}
-          parentId={proyectoId}
-          onSaved={(tarea) => {
-            onTareaCreated(tarea);
-            setTareaId(tarea.id);
           }}
           onDone={() => setSubVista("form")}
           onCancel={() => setSubVista("form")}
@@ -360,31 +331,22 @@ export function TimerBar({
         </Select>
       </div>
       <div>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <label className="text-xs text-slate-500 dark:text-slate-400">Tarea</label>
-          <button
-            type="button"
-            onClick={() => setSubVista("nueva-tarea")}
-            disabled={!proyectoId}
-            title="Nueva tarea"
-            className="text-[var(--accent-primary)] hover:opacity-70 disabled:opacity-40"
-          >
-            <Plus size={12} />
-          </button>
-        </div>
-        <Select
-          className="w-40"
-          value={tareaId}
-          onChange={(e) => setTareaId(Number(e.target.value))}
-        >
-          <option value={proyectoId}>— (proyecto en general)</option>
-          {descendientes.map(({ tarea: t, profundidad }) => (
-            <option key={t.id} value={t.id}>
-              {"— ".repeat(profundidad + 1)}
-              {t.nombre}
-            </option>
-          ))}
-        </Select>
+        <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Tarea</label>
+        {proyectoActual ? (
+          <TareaPicker
+            proyecto={proyectoActual}
+            tareas={tareas}
+            estados={estados}
+            tareaId={tareaId}
+            onSeleccionar={setTareaId}
+            onTareaCreated={onTareaCreated}
+            className="w-40"
+          />
+        ) : (
+          <div className="flex h-[34px] w-40 items-center rounded-md border border-slate-200 px-2.5 text-sm text-slate-400 dark:border-slate-800">
+            Sin proyecto
+          </div>
+        )}
       </div>
       <div>
         <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">
