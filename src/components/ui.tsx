@@ -54,6 +54,41 @@ export function Modal({
   );
 }
 
+/** Confirmación de una acción destructiva (borrar, descartar), en vez del
+ * `confirm()` nativo del navegador — mismo look que el resto de la app y
+ * respeta el tema oscuro/claro. */
+export function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel = "Confirmar",
+  danger = true,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal open={open} onClose={onCancel} title={title}>
+      <p className="text-sm text-slate-600 dark:text-slate-300">{message}</p>
+      <div className="mt-4 flex gap-2">
+        <Button variant={danger ? "danger" : "primary"} onClick={onConfirm}>
+          {confirmLabel}
+        </Button>
+        <Button variant="secondary" onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
 /** Banner de aviso con una acción principal y un descarte, para eventos que
  * requieren revisión del usuario sin forzar nada automáticamente (ej: "se
  * completaron todas las subtareas de X, ¿finalizarla también?"). */

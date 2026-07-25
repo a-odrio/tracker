@@ -13,7 +13,7 @@ import {
   weekDays,
   weekRange,
 } from "@/lib/utils";
-import { Button, Modal, Select } from "@/components/ui";
+import { Button, ConfirmDialog, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
 import { TimerBar } from "@/components/timetracking/timer-bar";
 import { WeekCalendar } from "@/components/timetracking/week-calendar";
@@ -28,6 +28,7 @@ export default function RegistroPage() {
     estados,
     tema,
     loading: datosCargando,
+    error: errorDatos,
   } = useAppData();
   const [weekAnchor, setWeekAnchor] = useState(new Date());
   const [registros, setRegistros] = useState<RegistroTiempoItem[]>([]);
@@ -42,6 +43,7 @@ export default function RegistroPage() {
     horaFin?: string;
     tareaId?: number;
   } | null>(null);
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
 
   const dias = useMemo(() => weekDays(weekAnchor), [weekAnchor]);
   const { start, end } = useMemo(() => weekRange(weekAnchor), [weekAnchor]);
@@ -65,7 +67,10 @@ export default function RegistroPage() {
         setRegistros(data);
         setLoading(false);
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => {
+        setError((e as Error).message);
+        setLoading(false);
+      });
   }
 
   useEffect(() => {
@@ -75,9 +80,9 @@ export default function RegistroPage() {
   }, [start.getTime(), end.getTime()]);
 
   async function eliminar(registro: RegistroTiempoItem) {
-    if (!confirm("¿Eliminar este registro de tiempo?")) return;
     await apiDelete(`/api/registros-tiempo/${registro.id}`);
     setRegistros((prev) => prev.filter((r) => r.id !== registro.id));
+    setConfirmandoEliminar(false);
     setEditing(null);
     setSeleccion(null);
     setShowForm(false);
@@ -91,10 +96,10 @@ export default function RegistroPage() {
 
   const totalHoras = sumarMinutosSinSolapar(registrosFiltrados) / 60;
 
-  if (error) {
+  if (error || errorDatos) {
     return (
       <p className="text-sm text-red-600 dark:text-red-400">
-        Error al cargar el registro de tiempo: {error}
+        Error al cargar el registro de tiempo: {error || errorDatos}
       </p>
     );
   }
@@ -220,7 +225,7 @@ export default function RegistroPage() {
           />
           {editing && (
             <button
-              onClick={() => eliminar(editing)}
+              onClick={() => setConfirmandoEliminar(true)}
               className="mt-3 text-xs font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
             >
               Eliminar este registro
@@ -228,6 +233,15 @@ export default function RegistroPage() {
           )}
         </Modal>
       )}
+
+      <ConfirmDialog
+        open={confirmandoEliminar}
+        title="Eliminar registro"
+        message="¿Eliminar este registro de tiempo?"
+        confirmLabel="Eliminar"
+        onConfirm={() => editing && eliminar(editing)}
+        onCancel={() => setConfirmandoEliminar(false)}
+      />
 
       {loading ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>

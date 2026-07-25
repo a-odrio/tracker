@@ -12,7 +12,7 @@ import type {
 } from "@/lib/types";
 import { raizDe } from "@/lib/tarea-tree";
 import { minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
-import { Button, ErrorText, Select } from "@/components/ui";
+import { Button, ConfirmDialog, ErrorText, Select } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
 import { TareaPicker } from "@/components/tasks/tarea-picker";
 import { useClienteProyectoSelector } from "@/components/timetracking/use-cliente-proyecto-selector";
@@ -83,6 +83,7 @@ export function TimerBar({
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
 
   // El id inicial de tarea replica el de proyecto (loguear "contra el
   // proyecto en general" por defecto) — se recalcula solo una vez, en el
@@ -164,9 +165,9 @@ export function TimerBar({
   }
 
   async function descartar() {
-    if (!confirm("¿Descartar el timer sin guardar un registro?")) return;
     await apiDelete("/api/timer");
     setTimer(null);
+    setConfirmandoDescarte(false);
   }
 
   if (loading) {
@@ -232,7 +233,7 @@ export function TimerBar({
           <Square size={14} />
         </Button>
         <button
-          onClick={descartar}
+          onClick={() => setConfirmandoDescarte(true)}
           title="Descartar sin guardar"
           className="shrink-0 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
         >
@@ -251,6 +252,14 @@ export function TimerBar({
           <CalendarPlus size={18} />
         </button>
         <ErrorText>{error}</ErrorText>
+        <ConfirmDialog
+          open={confirmandoDescarte}
+          title="Descartar timer"
+          message="¿Descartar el timer sin guardar un registro?"
+          confirmLabel="Descartar"
+          onConfirm={descartar}
+          onCancel={() => setConfirmandoDescarte(false)}
+        />
       </div>
     );
   }

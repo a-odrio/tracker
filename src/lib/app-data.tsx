@@ -86,7 +86,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setTema(tm);
         setLoading(false);
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => {
+        setError((e as Error).message);
+        setLoading(false);
+      });
   }, []);
 
   const clientesActivos = useMemo(() => clientes.filter((c) => c.activo), [clientes]);

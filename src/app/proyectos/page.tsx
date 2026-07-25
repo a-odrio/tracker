@@ -22,6 +22,7 @@ export default function ProyectosPage() {
     useAppData();
   const [modal, setModal] = useState<ModalState>(null);
   const [actionError, setActionError] = useState("");
+  const [pageError, setPageError] = useState("");
   const [mostrarFinalizadas, setMostrarFinalizadas] = useState(false);
 
   function cerrarModal() {
@@ -50,6 +51,7 @@ export default function ProyectosPage() {
   }
 
   async function toggleClientePredeterminado(cliente: ClienteItem) {
+    setPageError("");
     try {
       const actualizado = await apiPatch<ClienteItem>(`/api/clientes/${cliente.id}`, {
         predeterminado: !cliente.predeterminado,
@@ -61,7 +63,7 @@ export default function ProyectosPage() {
         }),
       );
     } catch (e) {
-      alert((e as Error).message);
+      setPageError((e as Error).message);
     }
   }
 
@@ -144,6 +146,8 @@ export default function ProyectosPage() {
           </Button>
         </div>
       </div>
+
+      <ErrorText>{pageError}</ErrorText>
 
       {clientes.length === 0 && (
         <p className="text-sm text-slate-500 dark:text-slate-400">

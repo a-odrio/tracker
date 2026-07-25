@@ -19,7 +19,7 @@ import { DayColumn } from "@/components/planning/day-column";
 import { Button } from "@/components/ui";
 
 export default function PlanificacionPage() {
-  const { tareas, estados, loading: datosCargando } = useAppData();
+  const { tareas, estados, loading: datosCargando, error: errorDatos } = useAppData();
   const [weekAnchor, setWeekAnchor] = useState(new Date());
   const [planificacion, setPlanificacion] = useState<PlanificacionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,10 @@ export default function PlanificacionPage() {
         setPlanificacion(data);
         setLoading(false);
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => {
+        setError((e as Error).message);
+        setLoading(false);
+      });
   }
 
   useEffect(() => {
@@ -120,10 +123,10 @@ export default function PlanificacionPage() {
     setPlanificacion((prev) => prev.map((p) => (p.id === item.id ? actualizado : p)));
   }
 
-  if (error) {
+  if (error || errorDatos) {
     return (
       <p className="text-sm text-red-600 dark:text-red-400">
-        Error al cargar la planificación: {error}
+        Error al cargar la planificación: {error || errorDatos}
       </p>
     );
   }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { addDays, endOfMonth, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
 import { apiGet } from "@/lib/api-client";
 import type { PlanificacionItem, RegistroTiempoItem } from "@/lib/types";
-import { clienteIdDe, raizDe } from "@/lib/tarea-tree";
+import { clienteIdDe, idsDeSubarbol, raizDe } from "@/lib/tarea-tree";
 import { useAppData } from "@/lib/app-data";
 import { formatDate, sumarMinutosSinSolapar, toDateOnlyISO } from "@/lib/utils";
 import { Button, Section, Select } from "@/components/ui";
@@ -19,7 +19,7 @@ function horasSinSolapar(registros: RegistroTiempoItem[]) {
 type Preset = "semana" | "mes" | "30dias";
 
 export default function ReportesPage() {
-  const { clientesActivos: clientes, tareas } = useAppData();
+  const { clientesActivos: clientes, tareas, error: errorDatos } = useAppData();
   const [preset, setPreset] = useState<Preset>("mes");
   const [desde, setDesde] = useState(toDateOnlyISO(startOfMonth(new Date())));
   const [hasta, setHasta] = useState(toDateOnlyISO(endOfMonth(new Date())));
@@ -60,7 +60,10 @@ export default function ReportesPage() {
         setPlanificacion(p);
         setLoading(false);
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => {
+        setError((e as Error).message);
+        setLoading(false);
+      });
   }, [desde, hasta]);
 
   const registrosRangoFiltrados = clienteFiltro
@@ -151,32 +154,37 @@ export default function ReportesPage() {
     return tareasFiltradas
       .filter((t) => t.horasEstimadas != null)
       .map((t) => {
+        // Las horas reales suman todo el subárbol de la tarea, no solo lo
+        // logueado en ella misma: un contenedor con horasEstimadas se
+        // cumple con el trabajo hecho en cualquiera de sus subtareas.
+        const idsSubarbol = new Set(idsDeSubarbol(t.id, tareas));
         const horasReales = horasSinSolapar(
-          registrosTodosFiltrados.filter((r) => r.tareaId === t.id),
+          registrosTodosFiltrados.filter((r) => idsSubarbol.has(r.tareaId)),
         );
         return { tarea: t, estimadas: t.horasEstimadas ?? 0, reales: horasReales };
       })
       .sort(
         (a, b) => Math.abs(b.reales - b.estimadas) - Math.abs(a.reales - a.estimadas),
       );
-  }, [tareasFiltradas, registrosTodosFiltrados]);
+  }, [tareasFiltradas, registrosTodosFiltrados, tareas]);
 
   const cumplimiento = useMemo(() => {
     if (planificacionFiltrada.length === 0) return null;
-    const realizadas = planificacionFiltrada.filter((p) =>
-      registrosTodosFiltrados.some((r) => r.tareaId === p.tareaId),
-    ).length;
+    const realizadas = planificacionFiltrada.filter((p) => {
+      const idsSubarbol = new Set(idsDeSubarbol(p.tareaId, tareas));
+      return registrosTodosFiltrados.some((r) => idsSubarbol.has(r.tareaId));
+    }).length;
     return {
       realizadas,
       total: planificacionFiltrada.length,
       porcentaje: Math.round((realizadas / planificacionFiltrada.length) * 100),
     };
-  }, [planificacionFiltrada, registrosTodosFiltrados]);
+  }, [planificacionFiltrada, registrosTodosFiltrados, tareas]);
 
-  if (error) {
+  if (error || errorDatos) {
     return (
       <p className="text-sm text-red-600 dark:text-red-400">
-        Error al cargar los reportes: {error}
+        Error al cargar los reportes: {error || errorDatos}
       </p>
     );
   }

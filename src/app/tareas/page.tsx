@@ -6,7 +6,7 @@ import type { Prioridad, TareaItem } from "@/lib/types";
 import { esHojaEfectiva, raizDe } from "@/lib/tarea-tree";
 import { useAppData } from "@/lib/app-data";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
-import { Button, Modal, MultiSelect } from "@/components/ui";
+import { Button, ConfirmDialog, ErrorText, Modal, MultiSelect } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
 import { EstadoTaskGroup } from "@/components/tasks/estado-task-group";
 
@@ -31,6 +31,8 @@ export default function TareasPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<TareaItem | null>(null);
   const [colapsados, setColapsados] = useState<Set<number>>(new Set());
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState<TareaItem | null>(null);
+  const [errorEliminar, setErrorEliminar] = useState("");
 
   function toggleColapsado(estadoId: number) {
     setColapsados((prev) => {
@@ -79,12 +81,13 @@ export default function TareasPage() {
   );
 
   async function eliminar(tarea: TareaItem) {
-    if (!confirm(`¿Eliminar la tarea "${tarea.nombre}"?`)) return;
+    setErrorEliminar("");
     try {
       await apiDelete(`/api/tareas/${tarea.id}`);
       setTareas((prev) => prev.filter((t) => t.id !== tarea.id));
+      setConfirmandoEliminar(null);
     } catch (e) {
-      alert((e as Error).message);
+      setErrorEliminar((e as Error).message);
     }
   }
 
@@ -112,6 +115,8 @@ export default function TareasPage() {
           + Nueva tarea
         </Button>
       </div>
+
+      <ErrorText>{errorEliminar}</ErrorText>
 
       {raices.length === 0 && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
@@ -206,11 +211,24 @@ export default function TareasPage() {
                 setEditing(tarea);
                 setShowForm(true);
               }}
-              onDelete={eliminar}
+              onDelete={(tarea) => setConfirmandoEliminar(tarea)}
             />
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmandoEliminar}
+        title="Eliminar tarea"
+        message={
+          confirmandoEliminar
+            ? `¿Eliminar la tarea "${confirmandoEliminar.nombre}"?`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        onConfirm={() => confirmandoEliminar && eliminar(confirmandoEliminar)}
+        onCancel={() => setConfirmandoEliminar(null)}
+      />
     </div>
   );
 }

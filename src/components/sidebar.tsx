@@ -120,8 +120,8 @@ const MAX_RESULTADOS = 8;
  * con dropdown de resultados que al click abre directo el modal de edición
  * de esa tarea, reusando TaskForm. */
 function TareaSearch({ collapsed }: { collapsed: boolean }) {
-  const { tareas, setTareas, estados, tema, loading } = useAppData();
-  const cargado = !loading;
+  const { tareas, setTareas, estados, tema, loading, error } = useAppData();
+  const cargado = !loading && !error;
   const [query, setQuery] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [editando, setEditando] = useState<TareaItem | null>(null);
@@ -175,6 +175,7 @@ function TareaSearch({ collapsed }: { collapsed: boolean }) {
               query={query}
               setQuery={setQuery}
               cargado={cargado}
+              error={error}
               resultados={resultados}
               tareas={tareas}
               onElegir={elegir}
@@ -208,6 +209,7 @@ function TareaSearch({ collapsed }: { collapsed: boolean }) {
         }}
         onFocus={() => setAbierto(true)}
         cargado={cargado}
+        error={error}
         resultados={abierto ? resultados : []}
         tareas={tareas}
         onElegir={elegir}
@@ -235,6 +237,7 @@ function SearchInput({
   setQuery,
   onFocus,
   cargado,
+  error,
   resultados,
   tareas,
   onElegir,
@@ -245,6 +248,7 @@ function SearchInput({
   setQuery: (v: string) => void;
   onFocus?: () => void;
   cargado: boolean;
+  error?: string;
   resultados: TareaItem[];
   tareas: TareaItem[];
   onElegir: (tarea: TareaItem) => void;
@@ -262,8 +266,9 @@ function SearchInput({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={onFocus}
-          placeholder={cargado ? "Buscar tarea…" : "Cargando…"}
+          placeholder={error ? "Error al cargar" : cargado ? "Buscar tarea…" : "Cargando…"}
           disabled={!cargado}
+          title={error}
           className="w-full rounded-md border border-slate-200 bg-slate-50 py-1.5 pr-2 pl-7 text-sm text-slate-900 outline-none focus:border-[var(--accent-primary)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>

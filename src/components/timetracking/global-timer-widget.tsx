@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { AlertCircle } from "lucide-react";
 import { apiGet } from "@/lib/api-client";
 import type { RegistroTiempoItem } from "@/lib/types";
 import { useAppData } from "@/lib/app-data";
@@ -18,8 +19,17 @@ import { TimerBar, type SeedRegistro } from "@/components/timetracking/timer-bar
  */
 export function GlobalTimerWidget() {
   const pathname = usePathname();
-  const { clientesActivos, tareas, upsertTarea, tiposActivos, setTipos, estados, tema, loading } =
-    useAppData();
+  const {
+    clientesActivos,
+    tareas,
+    upsertTarea,
+    tiposActivos,
+    setTipos,
+    estados,
+    tema,
+    loading,
+    error,
+  } = useAppData();
   const [seed, setSeed] = useState<SeedRegistro | null>(null);
   const [registrosDelDia, setRegistrosDelDia] = useState<RegistroTiempoItem[]>([]);
 
@@ -33,6 +43,16 @@ export function GlobalTimerWidget() {
   }
 
   if (pathname?.startsWith("/registro")) return null;
+  if (error) {
+    return (
+      <div
+        className="fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full border border-red-200 bg-white px-4 py-2 text-sm text-red-600 shadow-lg dark:border-red-900 dark:bg-slate-900 dark:text-red-400"
+        title={error}
+      >
+        <AlertCircle size={14} /> Error al cargar datos
+      </div>
+    );
+  }
   if (loading || !tema) return null;
   if (!tareas.some((t) => t.parentId === null)) return null;
 

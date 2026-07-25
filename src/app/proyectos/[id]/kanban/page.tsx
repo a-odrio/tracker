@@ -11,8 +11,16 @@ export default function KanbanPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { tareas, estados, tema, loading } = useAppData();
+  const { tareas, estados, tema, loading, error } = useAppData();
   const raiz = tareas.find((t) => t.id === Number(id)) ?? null;
+
+  if (error) {
+    return (
+      <p className="text-sm text-red-600 dark:text-red-400">
+        Error al cargar el proyecto: {error}
+      </p>
+    );
+  }
 
   if (loading) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>;
