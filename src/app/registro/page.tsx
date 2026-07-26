@@ -135,6 +135,7 @@ export default function RegistroPage() {
             estados={estados}
             colorPrincipal={tema.colorPrincipal}
             clienteInicial={clienteFiltro || undefined}
+            avisoTimerHoras={tema.avisoTimerHoras}
             onTareaCreated={upsertTarea}
             onAbrirRegistro={(seed) => {
               setEditing(null);

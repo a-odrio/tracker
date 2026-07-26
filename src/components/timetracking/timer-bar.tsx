@@ -12,7 +12,7 @@ import type {
 } from "@/lib/types";
 import { raizDe } from "@/lib/tarea-tree";
 import { minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
-import { Button, ConfirmDialog, ErrorText, Select } from "@/components/ui";
+import { Button, ConfirmDialog, ErrorText, InlineBanner, Select } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
 import { TareaPicker } from "@/components/tasks/tarea-picker";
 import { useClienteProyectoSelector } from "@/components/timetracking/use-cliente-proyecto-selector";
@@ -60,6 +60,7 @@ export function TimerBar({
   onTareaCreated,
   onAbrirRegistro,
   floating = false,
+  avisoTimerHoras = 4,
 }: {
   clientes: ClienteItem[];
   tareas: TareaItem[];
@@ -74,6 +75,9 @@ export function TimerBar({
    * cuando no hay timer corriendo, se expande al hacer click; con timer
    * corriendo siempre muestra la fila compacta, sin colapsar. */
   floating?: boolean;
+  /** Horas seguidas antes de avisar que el timer puede haber quedado
+   * corriendo por olvido (configurable en Configuración). */
+  avisoTimerHoras?: number;
 }) {
   const [subVista, setSubVista] = useState<SubVista>("form");
   const [expandidoFloat, setExpandidoFloat] = useState(false);
@@ -84,6 +88,7 @@ export function TimerBar({
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
+  const [avisoLargoDescartado, setAvisoLargoDescartado] = useState(false);
 
   // El id inicial de tarea replica el de proyecto (loguear "contra el
   // proyecto en general" por defecto) — se recalcula solo una vez, en el
@@ -120,6 +125,11 @@ export function TimerBar({
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [timer]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- el aviso de "lleva mucho corriendo" es por timer, no debe seguir descartado si arrancó uno nuevo
+    setAvisoLargoDescartado(false);
+  }, [timer?.id]);
 
   const proyectoActual = tareas.find((t) => t.id === proyectoId);
 
@@ -202,56 +212,68 @@ export function TimerBar({
 
   if (timer) {
     const elapsedMs = now - new Date(timer.inicio).getTime();
+    const elapsedHoras = elapsedMs / 3_600_000;
+    const mostrarAvisoLargo = elapsedHoras >= avisoTimerHoras && !avisoLargoDescartado;
     const raizTimer = timer.tarea ? raizDe(timer.tarea, tareas) : undefined;
     return (
-      <div
-        className={`flex flex-wrap items-center gap-3 rounded-lg border border-[var(--accent-primary)] bg-white p-3 dark:bg-slate-900 ${floating ? "w-[320px] shadow-lg" : ""}`}
-      >
-        <span className="relative flex h-2.5 w-2.5 shrink-0">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-            {timer.tarea && timer.tarea.id !== raizTimer?.id
-              ? timer.tarea.nombre
-              : "Sin tarea específica"}
+      <div className={`flex flex-col gap-2 ${floating ? "w-[320px]" : ""}`}>
+        <div
+          className={`flex flex-wrap items-center gap-3 rounded-lg border border-[var(--accent-primary)] bg-white p-3 dark:bg-slate-900 ${floating ? "shadow-lg" : ""}`}
+        >
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+              {timer.tarea && timer.tarea.id !== raizTimer?.id
+                ? timer.tarea.nombre
+                : "Sin tarea específica"}
+            </div>
+            <div className="truncate text-xs text-slate-500 dark:text-slate-400">
+              {raizTimer?.cliente?.nombre} · {raizTimer?.nombre} · {timer.tipoTrabajo?.nombre}
+            </div>
           </div>
-          <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-            {raizTimer?.cliente?.nombre} · {raizTimer?.nombre} · {timer.tipoTrabajo?.nombre}
+          <div className="font-mono text-lg tabular-nums text-slate-900 dark:text-slate-100">
+            {formatElapsed(elapsedMs)}
           </div>
+          <Button
+            onClick={detener}
+            disabled={stopping}
+            title="Detener y revisar el registro"
+            className="px-2"
+          >
+            <Square size={14} />
+          </Button>
+          <button
+            onClick={() => setConfirmandoDescarte(true)}
+            title="Descartar sin guardar"
+            className="shrink-0 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+          >
+            <X size={16} />
+          </button>
+          <button
+            onClick={() =>
+              onAbrirRegistro({
+                tareaId: timer.tareaId,
+                tipoTrabajoId: timer.tipoTrabajoId,
+              })
+            }
+            title="Nuevo registro manual"
+            className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+          >
+            <CalendarPlus size={18} />
+          </button>
+          <ErrorText>{error}</ErrorText>
         </div>
-        <div className="font-mono text-lg tabular-nums text-slate-900 dark:text-slate-100">
-          {formatElapsed(elapsedMs)}
-        </div>
-        <Button
-          onClick={detener}
-          disabled={stopping}
-          title="Detener y revisar el registro"
-          className="px-2"
-        >
-          <Square size={14} />
-        </Button>
-        <button
-          onClick={() => setConfirmandoDescarte(true)}
-          title="Descartar sin guardar"
-          className="shrink-0 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
-        >
-          <X size={16} />
-        </button>
-        <button
-          onClick={() =>
-            onAbrirRegistro({
-              tareaId: timer.tareaId,
-              tipoTrabajoId: timer.tipoTrabajoId,
-            })
-          }
-          title="Nuevo registro manual"
-          className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-        >
-          <CalendarPlus size={18} />
-        </button>
-        <ErrorText>{error}</ErrorText>
+        {mostrarAvisoLargo && (
+          <InlineBanner
+            text={`Este timer lleva más de ${avisoTimerHoras}h corriendo — ¿seguís trabajando en esto?`}
+            actionLabel="Detener"
+            onAction={detener}
+            onDismiss={() => setAvisoLargoDescartado(true)}
+          />
+        )}
         <ConfirmDialog
           open={confirmandoDescarte}
           title="Descartar timer"

@@ -17,8 +17,11 @@ enum Prioridad {
 }
 
 model Tema {
-  id             Int    @id @default(autoincrement())
-  colorPrincipal String @default("#3b82f6")
+  id               Int    @id @default(autoincrement())
+  colorPrincipal   String @default("#3b82f6")
+  /** Horas seguidas de un timer corriendo antes de avisar que puede haber
+   * quedado olvidado. */
+  avisoTimerHoras  Float  @default(4)
 }
 
 model Estado {

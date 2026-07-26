@@ -3,6 +3,7 @@ export type Prioridad = "URGENTE" | "ALTA" | "MEDIA" | "BAJA";
 export interface TemaItem {
   id: number;
   colorPrincipal: string;
+  avisoTimerHoras: number;
 }
 
 export interface EstadoItem {

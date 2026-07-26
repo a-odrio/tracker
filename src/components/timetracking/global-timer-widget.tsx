@@ -65,6 +65,7 @@ export function GlobalTimerWidget() {
         tipos={tiposActivos}
         estados={estados}
         colorPrincipal={tema.colorPrincipal}
+        avisoTimerHoras={tema.avisoTimerHoras}
         onTareaCreated={upsertTarea}
         onAbrirRegistro={abrirRegistroManual}
       />
