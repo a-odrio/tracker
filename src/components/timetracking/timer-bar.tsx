@@ -352,7 +352,7 @@ export function TimerBar({
     <div className="flex flex-nowrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
       <Select
         title="Cliente"
-        className="w-44"
+        className="w-44 shrink-0"
         value={clienteId}
         onChange={(e) => cambiarCliente(Number(e.target.value))}
       >
@@ -362,10 +362,10 @@ export function TimerBar({
           </option>
         ))}
       </Select>
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <Select
           title="Proyecto"
-          className="w-48"
+          className="w-48 shrink-0"
           value={proyectoId}
           onChange={(e) => cambiarProyecto(Number(e.target.value))}
         >
@@ -384,24 +384,26 @@ export function TimerBar({
           <Plus size={14} />
         </button>
       </div>
-      {proyectoActual ? (
-        <TareaPicker
-          proyecto={proyectoActual}
-          tareas={tareas}
-          estados={estados}
-          tareaId={tareaId}
-          onSeleccionar={setTareaId}
-          onTareaCreated={onTareaCreated}
-          className="w-48"
-        />
-      ) : (
-        <div className="flex h-[34px] w-48 items-center rounded-md border border-slate-200 px-2.5 text-sm text-slate-400 dark:border-slate-800">
-          Sin proyecto
-        </div>
-      )}
+      <div className="shrink-0">
+        {proyectoActual ? (
+          <TareaPicker
+            proyecto={proyectoActual}
+            tareas={tareas}
+            estados={estados}
+            tareaId={tareaId}
+            onSeleccionar={setTareaId}
+            onTareaCreated={onTareaCreated}
+            className="w-48"
+          />
+        ) : (
+          <div className="flex h-[34px] w-48 items-center rounded-md border border-slate-200 px-2.5 text-sm text-slate-400 dark:border-slate-800">
+            Sin proyecto
+          </div>
+        )}
+      </div>
       <Select
         title="Tipo de trabajo"
-        className="w-44"
+        className="w-44 shrink-0"
         value={tipoTrabajoId}
         onChange={(e) => setTipoTrabajoId(Number(e.target.value))}
       >
@@ -411,7 +413,7 @@ export function TimerBar({
           </option>
         ))}
       </Select>
-      <div className="ml-2 flex items-center gap-2 border-l border-slate-200 pl-4 dark:border-slate-800">
+      <div className="ml-2 flex shrink-0 items-center gap-2 border-l border-slate-200 pl-4 dark:border-slate-800">
         <Button
           onClick={iniciar}
           disabled={starting || !proyectoId || !tipoTrabajoId}

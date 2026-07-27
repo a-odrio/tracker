@@ -9,6 +9,7 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 import { ChevronDown } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 export function Modal({
   open,
@@ -165,7 +166,7 @@ export function Button({
       "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
   };
   return (
-    <button className={`${base} ${variants[variant]} ${className}`} {...props} />
+    <button className={twMerge(base, variants[variant], className)} {...props} />
   );
 }
 
@@ -173,7 +174,10 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-[var(--accent-primary)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-[var(--accent-primary)] ${props.className ?? ""}`}
+      className={twMerge(
+        "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-[var(--accent-primary)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-[var(--accent-primary)]",
+        props.className,
+      )}
     />
   );
 }
@@ -182,7 +186,10 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className={`w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-[var(--accent-primary)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-[var(--accent-primary)] ${props.className ?? ""}`}
+      className={twMerge(
+        "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-[var(--accent-primary)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-[var(--accent-primary)]",
+        props.className,
+      )}
     />
   );
 }
@@ -285,7 +292,10 @@ export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       {...props}
-      className={`w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-[var(--accent-primary)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-[var(--accent-primary)] ${props.className ?? ""}`}
+      className={twMerge(
+        "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-[var(--accent-primary)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-[var(--accent-primary)]",
+        props.className,
+      )}
     />
   );
 }
