@@ -16,16 +16,30 @@ export function toDateOnlyISO(date: Date) {
   return format(date, "yyyy-MM-dd");
 }
 
-export function weekDays(anchor: Date) {
-  const start = startOfWeek(anchor, { weekStartsOn: 1 });
+type DiaSemana = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export function weekDays(anchor: Date, weekStartsOn: DiaSemana = 1) {
+  const start = startOfWeek(anchor, { weekStartsOn });
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
 
-export function weekRange(anchor: Date) {
+export function weekRange(anchor: Date, weekStartsOn: DiaSemana = 1) {
   return {
-    start: startOfWeek(anchor, { weekStartsOn: 1 }),
-    end: endOfWeek(anchor, { weekStartsOn: 1 }),
+    start: startOfWeek(anchor, { weekStartsOn }),
+    end: endOfWeek(anchor, { weekStartsOn }),
   };
+}
+
+/** Lunes a viernes de la semana que contiene `anchor` — fijo, sin importar
+ * el día configurado de inicio de semana (el fin de semana laboral no cambia). */
+export function diasLaborales(anchor: Date) {
+  const start = startOfWeek(anchor, { weekStartsOn: 1 });
+  return Array.from({ length: 5 }, (_, i) => addDays(start, i));
+}
+
+/** Ventana de 3 días consecutivos arrancando en `anchor`. */
+export function diasVentana3(anchor: Date) {
+  return Array.from({ length: 3 }, (_, i) => addDays(anchor, i));
 }
 
 export function timeToMinutes(time: string) {

@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { addWeeks } from "date-fns";
+import { addDays } from "date-fns";
 import { apiDelete, apiGet } from "@/lib/api-client";
 import type { RegistroTiempoItem } from "@/lib/types";
 import { clienteIdDe } from "@/lib/tarea-tree";
 import { useAppData } from "@/lib/app-data";
 import {
+  diasLaborales,
+  diasVentana3,
   formatDate,
   sumarMinutosSinSolapar,
   toDateOnlyISO,
   weekDays,
-  weekRange,
 } from "@/lib/utils";
 import { Button, ConfirmDialog, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
 import { TimerBar, type SeedRegistro } from "@/components/timetracking/timer-bar";
-import { WeekCalendar } from "@/components/timetracking/week-calendar";
+import { WeekCalendar, type VistaCalendario } from "@/components/timetracking/week-calendar";
 
 export default function RegistroPage() {
   const {
@@ -31,6 +32,7 @@ export default function RegistroPage() {
     error: errorDatos,
   } = useAppData();
   const [weekAnchor, setWeekAnchor] = useState(new Date());
+  const [vista, setVista] = useState<VistaCalendario>("completa");
   const [registros, setRegistros] = useState<RegistroTiempoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -45,8 +47,15 @@ export default function RegistroPage() {
   } | null>(null);
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
 
-  const dias = useMemo(() => weekDays(weekAnchor), [weekAnchor]);
-  const { start, end } = useMemo(() => weekRange(weekAnchor), [weekAnchor]);
+  const inicioSemana = (tema?.inicioSemana ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  const dias = useMemo(() => {
+    if (vista === "3dias") return diasVentana3(weekAnchor);
+    if (vista === "laboral") return diasLaborales(weekAnchor);
+    return weekDays(weekAnchor, inicioSemana);
+  }, [weekAnchor, vista, inicioSemana]);
+  const start = dias[0];
+  const end = dias[dias.length - 1];
+  const pasoDias = vista === "3dias" ? 3 : 7;
 
   const hayProyectos = tareas.some((t) => t.parentId === null);
   const datosListos = !datosCargando;
@@ -112,28 +121,51 @@ export default function RegistroPage() {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          Registro de Trabajo
-        </h1>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => setWeekAnchor((d) => addWeeks(d, -1))}>
-            ← Anterior
-          </Button>
-          <span className="text-sm text-slate-600 dark:text-slate-300">
-            {formatDate(start)} – {formatDate(end)}
-          </span>
-          <Button variant="secondary" onClick={() => setWeekAnchor(new Date())}>
-            Hoy
-          </Button>
-          <Button variant="secondary" onClick={() => setWeekAnchor((d) => addWeeks(d, 1))}>
-            Siguiente →
-          </Button>
+      <div className="flex w-full max-w-4xl shrink-0 flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+            Registro de Trabajo
+          </h1>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500 dark:text-slate-400">Cliente</span>
+              <Select
+                className="w-40"
+                value={clienteFiltro}
+                onChange={(e) =>
+                  setClienteFiltro(e.target.value ? Number(e.target.value) : "")
+                }
+              >
+                <option value="">Todos</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <span className="whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
+              Total semana:{" "}
+              <span className="font-medium">{totalHoras.toFixed(2)}h</span>
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setWeekAnchor((d) => addDays(d, -pasoDias))}>
+                ← Anterior
+              </Button>
+              <span className="text-sm whitespace-nowrap text-slate-600 dark:text-slate-300">
+                {formatDate(start)} – {formatDate(end)}
+              </span>
+              <Button variant="secondary" onClick={() => setWeekAnchor(new Date())}>
+                Hoy
+              </Button>
+              <Button variant="secondary" onClick={() => setWeekAnchor((d) => addDays(d, pasoDias))}>
+                Siguiente →
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {datosListos && tema && (
-        <div className="shrink-0">
+        {datosListos && tema && (
           <TimerBar
             clientes={clientes}
             tareas={tareas}
@@ -145,39 +177,15 @@ export default function RegistroPage() {
             onTareaCreated={upsertTarea}
             onAbrirRegistro={abrirRegistroManual}
           />
-        </div>
-      )}
+        )}
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-500 dark:text-slate-400">Cliente</span>
-          <Select
-            className="w-44"
-            value={clienteFiltro}
-            onChange={(e) =>
-              setClienteFiltro(e.target.value ? Number(e.target.value) : "")
-            }
-          >
-            <option value="">Todos</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </Select>
-          <span className="whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-            Total semana:{" "}
-            <span className="font-medium">{totalHoras.toFixed(2)}h</span>
-          </span>
-        </div>
+        {!hayProyectos && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
+            Necesitás crear al menos un cliente y un proyecto antes de cargar registros.
+            Andá a Proyectos.
+          </p>
+        )}
       </div>
-
-      {!hayProyectos && (
-        <p className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
-          Necesitás crear al menos un cliente y un proyecto antes de cargar registros.
-          Andá a Proyectos.
-        </p>
-      )}
 
       {tema && (
         <Modal
@@ -254,6 +262,8 @@ export default function RegistroPage() {
             dias={dias}
             registros={registrosFiltrados}
             tareas={tareas}
+            vista={vista}
+            onVistaChange={setVista}
             onEdit={(registro) => {
               setEditing(registro);
               setSeleccion(null);

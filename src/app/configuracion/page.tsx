@@ -5,6 +5,7 @@ import { EstadosConfig } from "@/components/config/estados-config";
 import { TiposTrabajoConfig } from "@/components/config/tipos-trabajo-config";
 import { ColorPrincipalConfig } from "@/components/config/color-principal-config";
 import { AvisoTimerConfig } from "@/components/config/aviso-timer-config";
+import { InicioSemanaConfig } from "@/components/config/inicio-semana-config";
 
 export default function ConfiguracionPage() {
   const { estados, setEstados, tipos, setTipos, tema, setTema, loading, error } = useAppData();
@@ -39,6 +40,10 @@ export default function ConfiguracionPage() {
       <AvisoTimerConfig
         avisoTimerHoras={tema.avisoTimerHoras}
         onChange={(avisoTimerHoras) => setTema({ ...tema, avisoTimerHoras })}
+      />
+      <InicioSemanaConfig
+        inicioSemana={tema.inicioSemana}
+        onChange={(inicioSemana) => setTema({ ...tema, inicioSemana })}
       />
     </div>
   );

@@ -22,6 +22,8 @@ model Tema {
   /** Horas seguidas de un timer corriendo antes de avisar que puede haber
    * quedado olvidado. */
   avisoTimerHoras  Float  @default(4)
+  /// Día en que arranca la semana en la grilla de Registro (0=domingo..6=sábado, convención date-fns weekStartsOn). Por defecto 1 (lunes).
+  inicioSemana     Int    @default(1)
 }
 
 model Estado {

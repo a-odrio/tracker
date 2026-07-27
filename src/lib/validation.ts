@@ -30,6 +30,7 @@ export const temaSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Formato hex inválido (ej: #3b82f6)"),
   avisoTimerHoras: z.number().positive(),
+  inicioSemana: z.number().int().min(0).max(6),
 });
 
 // Modelo unificado: una tarea sin parentId es una raíz (antes "Proyecto") y

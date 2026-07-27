@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarRange } from "lucide-react";
 import type { RegistroTiempoItem, TareaItem } from "@/lib/types";
 import { raizDe } from "@/lib/tarea-tree";
 import { formatDate, minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
@@ -12,6 +13,14 @@ const SNAP_MIN = 15;
 const ITEM_WIDTH_RATIO = 0.82;
 
 type DragState = { diaISO: string; startMin: number; currentMin: number };
+
+export type VistaCalendario = "3dias" | "laboral" | "completa";
+
+const OPCIONES_VISTA: { value: VistaCalendario; label: string }[] = [
+  { value: "3dias", label: "3 días" },
+  { value: "laboral", label: "Lunes a viernes" },
+  { value: "completa", label: "Semana completa" },
+];
 
 function layoutDia(items: RegistroTiempoItem[]) {
   const ordenados = [...items].sort(
@@ -50,6 +59,8 @@ export function WeekCalendar({
   tareas,
   onEdit,
   onSelect,
+  vista,
+  onVistaChange,
 }: {
   dias: Date[];
   registros: RegistroTiempoItem[];
@@ -58,7 +69,23 @@ export function WeekCalendar({
   onEdit: (registro: RegistroTiempoItem) => void;
   /** Se dispara al seleccionar un período libre arrastrando en el calendario. */
   onSelect?: (fecha: string, horaInicio: string, horaFin: string) => void;
+  vista: VistaCalendario;
+  onVistaChange: (vista: VistaCalendario) => void;
 }) {
+  const [vistaAbierta, setVistaAbierta] = useState(false);
+  const vistaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!vistaAbierta) return;
+    function onMouseDown(e: MouseEvent) {
+      if (vistaRef.current && !vistaRef.current.contains(e.target as Node)) {
+        setVistaAbierta(false);
+      }
+    }
+    window.addEventListener("mousedown", onMouseDown);
+    return () => window.removeEventListener("mousedown", onMouseDown);
+  }, [vistaAbierta]);
+
   const { horaInicioEje, horaFinEje } = useMemo(() => {
     let min = HORA_INICIO_DEFAULT;
     let max = 21;
@@ -158,7 +185,40 @@ export function WeekCalendar({
     <div className="h-full overflow-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div className="flex">
         <div className="sticky left-0 z-20 w-14 shrink-0 border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
-          <div className="sticky top-0 z-10 h-10 border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900" />
+          <div
+            ref={vistaRef}
+            className="relative sticky top-0 z-10 flex h-10 items-center justify-center border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900"
+          >
+            <button
+              type="button"
+              onClick={() => setVistaAbierta((v) => !v)}
+              title="Cambiar vista"
+              className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            >
+              <CalendarRange size={14} />
+            </button>
+            {vistaAbierta && (
+              <div className="absolute top-full left-0 z-30 mt-1 w-40 rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                {OPCIONES_VISTA.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => {
+                      onVistaChange(o.value);
+                      setVistaAbierta(false);
+                    }}
+                    className={`block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                      vista === o.value
+                        ? "font-medium text-[var(--accent-primary)]"
+                        : "text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div style={{ height: alturaTotal }} className="relative">
             {horas.map((h, i) => (
               <div
@@ -177,13 +237,13 @@ export function WeekCalendar({
           return (
             <div
               key={dia.toISOString()}
-              className="w-36 shrink-0 border-r border-slate-100 last:border-r-0 dark:border-slate-800"
+              className="min-w-0 flex-1 border-r border-slate-100 last:border-r-0 dark:border-slate-800"
             >
               <div
-                className={`sticky top-0 z-10 flex h-10 flex-col items-center justify-center border-b border-slate-100 text-xs dark:border-slate-800 ${isToday ? "bg-[var(--accent-primary)] text-[var(--accent-primary-fg)]" : "bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"}`}
+                className={`sticky top-0 z-10 flex h-10 flex-col items-center justify-center overflow-hidden border-b border-slate-100 px-1 text-xs dark:border-slate-800 ${isToday ? "bg-[var(--accent-primary)] text-[var(--accent-primary-fg)]" : "bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"}`}
               >
-                <span className="font-semibold capitalize">{formatDate(dia, "EEEE")}</span>
-                <span className="opacity-70">{formatDate(dia, "dd/MM")}</span>
+                <span className="truncate font-semibold capitalize">{formatDate(dia, "EEEE")}</span>
+                <span className="truncate opacity-70">{formatDate(dia, "dd/MM")}</span>
               </div>
               <div
                 style={{ height: alturaTotal }}

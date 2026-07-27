@@ -4,6 +4,8 @@ export interface TemaItem {
   id: number;
   colorPrincipal: string;
   avisoTimerHoras: number;
+  /** Día en que arranca la semana en la grilla de Registro (0=domingo..6=sábado). */
+  inicioSemana: number;
 }
 
 export interface EstadoItem {
