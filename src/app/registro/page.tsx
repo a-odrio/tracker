@@ -122,61 +122,61 @@ export default function RegistroPage() {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <div className="mx-auto flex w-fit max-w-full shrink-0 flex-col gap-4">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="shrink-0 text-2xl font-semibold text-slate-900 dark:text-slate-100">
-            Registro de Trabajo
-          </h1>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="secondary"
-              title="Semana anterior"
-              className="px-2"
-              onClick={() => setWeekAnchor((d) => addDays(d, -pasoDias))}
-            >
-              <ChevronLeft size={16} />
-            </Button>
-            <span className="text-sm whitespace-nowrap text-slate-600 dark:text-slate-300">
-              {formatDate(start)} – {formatDate(end)}
-            </span>
-            <Button variant="secondary" onClick={() => setWeekAnchor(new Date())}>
-              Hoy
-            </Button>
-            <Button
-              variant="secondary"
-              title="Semana siguiente"
-              className="px-2"
-              onClick={() => setWeekAnchor((d) => addDays(d, pasoDias))}
-            >
-              <ChevronRight size={16} />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500 dark:text-slate-400">Cliente</span>
-            <Select
-              className="w-40"
-              value={clienteFiltro}
-              onChange={(e) =>
-                setClienteFiltro(e.target.value ? Number(e.target.value) : "")
-              }
-            >
-              <option value="">Todos</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <span className="whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-            Total semana:{" "}
-            <span className="font-medium">{totalHoras.toFixed(2)}h</span>
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <h1 className="shrink-0 text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          Registro de Trabajo
+        </h1>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="secondary"
+            title="Semana anterior"
+            className="px-2"
+            onClick={() => setWeekAnchor((d) => addDays(d, -pasoDias))}
+          >
+            <ChevronLeft size={16} />
+          </Button>
+          <span className="text-sm whitespace-nowrap text-slate-600 dark:text-slate-300">
+            {formatDate(start)} – {formatDate(end)}
           </span>
+          <Button variant="secondary" onClick={() => setWeekAnchor(new Date())}>
+            Hoy
+          </Button>
+          <Button
+            variant="secondary"
+            title="Semana siguiente"
+            className="px-2"
+            onClick={() => setWeekAnchor((d) => addDays(d, pasoDias))}
+          >
+            <ChevronRight size={16} />
+          </Button>
         </div>
+      </div>
 
+      <div className="flex shrink-0 flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500 dark:text-slate-400">Cliente</span>
+          <Select
+            className="w-40"
+            value={clienteFiltro}
+            onChange={(e) =>
+              setClienteFiltro(e.target.value ? Number(e.target.value) : "")
+            }
+          >
+            <option value="">Todos</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <span className="whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
+          Total semana:{" "}
+          <span className="font-medium">{totalHoras.toFixed(2)}h</span>
+        </span>
+      </div>
+
+      <div className="flex w-fit max-w-full shrink-0 flex-col gap-4">
         {datosListos && tema && (
           <TimerBar
             clientes={clientes}
