@@ -17,6 +17,7 @@ import {
   ErrorText,
   Input,
   Label,
+  Modal,
   Select,
   Textarea,
 } from "@/components/ui";
@@ -24,9 +25,8 @@ import { TaskForm } from "@/components/tasks/task-form";
 import { TareaPicker } from "@/components/tasks/tarea-picker";
 import { TipoTrabajoForm } from "@/components/config/tipo-trabajo-form";
 import { useClienteProyectoSelector } from "@/components/timetracking/use-cliente-proyecto-selector";
-import { SubVistaPanel } from "@/components/timetracking/subvista-panel";
 
-type SubVista = "form" | "nuevo-proyecto" | "nuevo-tipo";
+type SubModal = "nuevo-proyecto" | "nuevo-tipo" | null;
 
 /** Estado a mostrar por defecto para una tarea: el actual, salvo que sea el
  * estado inicial, en cuyo caso se previsualiza el siguiente (misma regla que
@@ -77,7 +77,7 @@ export function TimeEntryForm({
   onSaved: (registro: RegistroTiempoItem) => void;
   onCancel?: () => void;
 }) {
-  const [subVista, setSubVista] = useState<SubVista>("form");
+  const [subModal, setSubModal] = useState<SubModal>(null);
   const [fecha, setFecha] = useState(
     registro?.fecha.slice(0, 10) ?? valoresIniciales?.fecha ?? toDateOnlyISO(new Date()),
   );
@@ -175,12 +175,12 @@ export function TimeEntryForm({
   const proyectoActual = tareas.find((t) => t.id === proyectoId);
   const estadosOrdenados = [...estados].sort((a, b) => a.orden - b.orden);
 
-  if (subVista === "nuevo-proyecto") {
-    return (
-      <SubVistaPanel
-        titulo="Nuevo proyecto"
-        volverLabel="← Volver al registro"
-        onVolver={() => setSubVista("form")}
+  return (
+    <div className="space-y-3">
+      <Modal
+        open={subModal === "nuevo-proyecto"}
+        onClose={() => setSubModal(null)}
+        title="Nuevo proyecto"
       >
         <TaskForm
           colorPrincipal={colorPrincipal}
@@ -190,34 +190,24 @@ export function TimeEntryForm({
           estados={estados}
           parentId={null}
           onSaved={onTareaCreated}
-          onDone={() => setSubVista("form")}
-          onCancel={() => setSubVista("form")}
+          onDone={() => setSubModal(null)}
+          onCancel={() => setSubModal(null)}
         />
-      </SubVistaPanel>
-    );
-  }
-
-  if (subVista === "nuevo-tipo") {
-    return (
-      <SubVistaPanel
-        titulo="Nuevo tipo de trabajo"
-        volverLabel="← Volver al registro"
-        onVolver={() => setSubVista("form")}
+      </Modal>
+      <Modal
+        open={subModal === "nuevo-tipo"}
+        onClose={() => setSubModal(null)}
+        title="Nuevo tipo de trabajo"
       >
         <TipoTrabajoForm
           onSaved={(tipo) => {
             onTipoCreated(tipo);
             setTipoTrabajoId(tipo.id);
-            setSubVista("form");
+            setSubModal(null);
           }}
-          onCancel={() => setSubVista("form")}
+          onCancel={() => setSubModal(null)}
         />
-      </SubVistaPanel>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
+      </Modal>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
           <Label>Fecha</Label>
@@ -241,7 +231,7 @@ export function TimeEntryForm({
             <Label>Proyecto</Label>
             <button
               type="button"
-              onClick={() => setSubVista("nuevo-proyecto")}
+              onClick={() => setSubModal("nuevo-proyecto")}
               className="flex items-center gap-0.5 text-xs font-medium text-[var(--accent-primary)] hover:underline"
             >
               <Plus size={11} /> Nuevo
@@ -280,7 +270,7 @@ export function TimeEntryForm({
             <Label>Tipo de trabajo</Label>
             <button
               type="button"
-              onClick={() => setSubVista("nuevo-tipo")}
+              onClick={() => setSubModal("nuevo-tipo")}
               className="flex items-center gap-0.5 text-xs font-medium text-[var(--accent-primary)] hover:underline"
             >
               <Plus size={11} /> Nuevo

@@ -12,13 +12,11 @@ import type {
 } from "@/lib/types";
 import { raizDe } from "@/lib/tarea-tree";
 import { minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
-import { Button, ConfirmDialog, ErrorText, InlineBanner, Select } from "@/components/ui";
+import { Button, ConfirmDialog, ErrorText, InlineBanner, Modal, Select } from "@/components/ui";
 import { TaskForm } from "@/components/tasks/task-form";
 import { TareaPicker } from "@/components/tasks/tarea-picker";
 import { useClienteProyectoSelector } from "@/components/timetracking/use-cliente-proyecto-selector";
-import { SubVistaPanel } from "@/components/timetracking/subvista-panel";
-
-type SubVista = "form" | "nuevo-proyecto";
+import { FloatingCard } from "@/components/timetracking/floating-card";
 
 export type SeedRegistro = {
   tareaId?: number;
@@ -73,14 +71,13 @@ export function TimerBar({
   onAbrirRegistro: (seed: SeedRegistro) => void;
   /** Modo pastilla flotante (widget global): colapsado a un botón chico
    * cuando no hay timer corriendo, se expande al hacer click; con timer
-   * corriendo siempre muestra la fila compacta, sin colapsar. */
+   * corriendo siempre muestra la fila compacta, sin colapsar. El
+   * empaquetado visual lo resuelve FloatingCard, no este componente. */
   floating?: boolean;
   /** Horas seguidas antes de avisar que el timer puede haber quedado
    * corriendo por olvido (configurable en Configuración). */
   avisoTimerHoras?: number;
 }) {
-  const [subVista, setSubVista] = useState<SubVista>("form");
-  const [expandidoFloat, setExpandidoFloat] = useState(false);
   const [timer, setTimer] = useState<TimerActivoItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
@@ -89,6 +86,7 @@ export function TimerBar({
   const [stopping, setStopping] = useState(false);
   const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
   const [avisoLargoDescartado, setAvisoLargoDescartado] = useState(false);
+  const [mostrarNuevoProyecto, setMostrarNuevoProyecto] = useState(false);
 
   // El id inicial de tarea replica el de proyecto (loguear "contra el
   // proyecto en general" por defecto) — se recalcula solo una vez, en el
@@ -187,39 +185,14 @@ export function TimerBar({
     );
   }
 
-  if (subVista === "nuevo-proyecto") {
-    return (
-      <SubVistaPanel titulo="Nuevo proyecto" contenedor onVolver={() => setSubVista("form")}>
-        <TaskForm
-          colorPrincipal={colorPrincipal}
-          clientes={clientes}
-          clienteId={clienteId || undefined}
-          tareas={tareas}
-          estados={estados}
-          parentId={null}
-          onSaved={(proyecto) => {
-            onTareaCreated(proyecto);
-            setClienteId(proyecto.clienteId ?? clienteId);
-            setProyectoId(proyecto.id);
-            setTareaId(proyecto.id);
-          }}
-          onDone={() => setSubVista("form")}
-          onCancel={() => setSubVista("form")}
-        />
-      </SubVistaPanel>
-    );
-  }
-
   if (timer) {
     const elapsedMs = now - new Date(timer.inicio).getTime();
     const elapsedHoras = elapsedMs / 3_600_000;
     const mostrarAvisoLargo = elapsedHoras >= avisoTimerHoras && !avisoLargoDescartado;
     const raizTimer = timer.tarea ? raizDe(timer.tarea, tareas) : undefined;
-    return (
-      <div className={`flex flex-col gap-2 ${floating ? "w-[320px]" : ""}`}>
-        <div
-          className={`flex flex-wrap items-center gap-3 rounded-lg border border-[var(--accent-primary)] bg-white p-3 dark:bg-slate-900 ${floating ? "shadow-lg" : ""}`}
-        >
+    const contenido = (
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--accent-primary)] bg-white p-3 dark:bg-slate-900">
           <span className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
@@ -284,123 +257,145 @@ export function TimerBar({
         />
       </div>
     );
-  }
-
-  if (floating && !expandidoFloat) {
-    return (
-      <button
-        type="button"
-        onClick={() => setExpandidoFloat(true)}
-        className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-      >
-        <Clock size={14} /> Timer
-      </button>
+    return floating ? (
+      <FloatingCard collapsible={false} pill={null}>
+        {contenido}
+      </FloatingCard>
+    ) : (
+      contenido
     );
   }
 
-  return (
-    <div
-      className={`flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 ${floating ? "relative w-[320px] shadow-lg" : ""}`}
-    >
-      {floating && (
-        <button
-          type="button"
-          onClick={() => setExpandidoFloat(false)}
-          title="Contraer"
-          className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:hover:text-slate-100"
-        >
-          <X size={13} />
-        </button>
-      )}
-      <div>
-        <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Cliente</label>
-        <Select
-          className="w-36"
-          value={clienteId}
-          onChange={(e) => cambiarCliente(Number(e.target.value))}
-        >
-          {clientes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <label className="text-xs text-slate-500 dark:text-slate-400">Proyecto</label>
-          <button
-            type="button"
-            onClick={() => setSubVista("nuevo-proyecto")}
-            title="Nuevo proyecto"
-            className="text-[var(--accent-primary)] hover:opacity-70"
+  const contenido = (
+    <>
+      <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+        <div>
+          <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Cliente</label>
+          <Select
+            className="w-36"
+            value={clienteId}
+            onChange={(e) => cambiarCliente(Number(e.target.value))}
           >
-            <Plus size={12} />
-          </button>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </Select>
         </div>
-        <Select
-          className="w-40"
-          value={proyectoId}
-          onChange={(e) => cambiarProyecto(Number(e.target.value))}
-        >
-          {proyectosFiltrados.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div>
-        <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Tarea</label>
-        {proyectoActual ? (
-          <TareaPicker
-            proyecto={proyectoActual}
-            tareas={tareas}
-            estados={estados}
-            tareaId={tareaId}
-            onSeleccionar={setTareaId}
-            onTareaCreated={onTareaCreated}
-            className="w-40"
-          />
-        ) : (
-          <div className="flex h-[34px] w-40 items-center rounded-md border border-slate-200 px-2.5 text-sm text-slate-400 dark:border-slate-800">
-            Sin proyecto
+        <div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500 dark:text-slate-400">Proyecto</label>
+            <button
+              type="button"
+              onClick={() => setMostrarNuevoProyecto(true)}
+              title="Nuevo proyecto"
+              className="text-[var(--accent-primary)] hover:opacity-70"
+            >
+              <Plus size={12} />
+            </button>
           </div>
-        )}
-      </div>
-      <div>
-        <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">
-          Tipo de trabajo
-        </label>
-        <Select
-          className="w-36"
-          value={tipoTrabajoId}
-          onChange={(e) => setTipoTrabajoId(Number(e.target.value))}
+          <Select
+            className="w-40"
+            value={proyectoId}
+            onChange={(e) => cambiarProyecto(Number(e.target.value))}
+          >
+            {proyectosFiltrados.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Tarea</label>
+          {proyectoActual ? (
+            <TareaPicker
+              proyecto={proyectoActual}
+              tareas={tareas}
+              estados={estados}
+              tareaId={tareaId}
+              onSeleccionar={setTareaId}
+              onTareaCreated={onTareaCreated}
+              className="w-40"
+            />
+          ) : (
+            <div className="flex h-[34px] w-40 items-center rounded-md border border-slate-200 px-2.5 text-sm text-slate-400 dark:border-slate-800">
+              Sin proyecto
+            </div>
+          )}
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">
+            Tipo de trabajo
+          </label>
+          <Select
+            className="w-36"
+            value={tipoTrabajoId}
+            onChange={(e) => setTipoTrabajoId(Number(e.target.value))}
+          >
+            {tipos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button
+          onClick={iniciar}
+          disabled={starting || !proyectoId || !tipoTrabajoId}
+          title="Iniciar timer"
+          className="px-2"
         >
-          {tipos.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.nombre}
-            </option>
-          ))}
-        </Select>
+          <Play size={14} />
+        </Button>
+        <button
+          onClick={() => onAbrirRegistro({ tareaId, tipoTrabajoId })}
+          disabled={!proyectoId}
+          title="Nuevo registro manual"
+          className="shrink-0 text-slate-400 hover:text-slate-700 disabled:opacity-40 dark:hover:text-slate-200"
+        >
+          <CalendarPlus size={20} />
+        </button>
+        <ErrorText>{error}</ErrorText>
       </div>
-      <Button
-        onClick={iniciar}
-        disabled={starting || !proyectoId || !tipoTrabajoId}
-        title="Iniciar timer"
-        className="px-2"
+      <Modal
+        open={mostrarNuevoProyecto}
+        onClose={() => setMostrarNuevoProyecto(false)}
+        title="Nuevo proyecto"
       >
-        <Play size={14} />
-      </Button>
-      <button
-        onClick={() => onAbrirRegistro({ tareaId, tipoTrabajoId })}
-        disabled={!proyectoId}
-        title="Nuevo registro manual"
-        className="shrink-0 text-slate-400 hover:text-slate-700 disabled:opacity-40 dark:hover:text-slate-200"
-      >
-        <CalendarPlus size={20} />
-      </button>
-      <ErrorText>{error}</ErrorText>
-    </div>
+        <TaskForm
+          colorPrincipal={colorPrincipal}
+          clientes={clientes}
+          clienteId={clienteId || undefined}
+          tareas={tareas}
+          estados={estados}
+          parentId={null}
+          onSaved={(proyecto) => {
+            onTareaCreated(proyecto);
+            setClienteId(proyecto.clienteId ?? clienteId);
+            setProyectoId(proyecto.id);
+            setTareaId(proyecto.id);
+          }}
+          onDone={() => setMostrarNuevoProyecto(false)}
+          onCancel={() => setMostrarNuevoProyecto(false)}
+        />
+      </Modal>
+    </>
+  );
+
+  return floating ? (
+    <FloatingCard
+      collapsible
+      pill={
+        <>
+          <Clock size={14} /> Timer
+        </>
+      }
+    >
+      {contenido}
+    </FloatingCard>
+  ) : (
+    contenido
   );
 }
