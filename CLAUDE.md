@@ -9,3 +9,9 @@
   Supabase para este uso porque su free tier pausa el proyecto tras 7 días de
   inactividad y lo borra si sigue pausado mucho tiempo, algo problemático para
   una app personal que no se usa todos los días.
+- Antes de desplegar la app públicamente: correr `npm audit` y resolver lo
+  pendiente (a la fecha, principalmente CVEs de Next.js sobre SSRF/bypass de
+  middleware/Server Actions que solo importan con la app expuesta a tráfico
+  de terceros — hoy no aplican porque corre solo local). `npm audit fix
+  --force` sube Next.js y ESLint a versiones con cambios breaking, así que
+  conviene revisar antes de aplicarlo a ciegas.
