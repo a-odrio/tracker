@@ -249,7 +249,7 @@ export function TimerBar({
     );
   }
 
-  const campos = (
+  const camposFlotante = (
     <>
       <div>
         <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Cliente</label>
@@ -326,7 +326,7 @@ export function TimerBar({
     </>
   );
 
-  const acciones = (
+  const accionesFlotante = (
     <>
       <Button
         onClick={iniciar}
@@ -348,23 +348,101 @@ export function TimerBar({
     </>
   );
 
+  const filaInline = (
+    <div className="flex flex-nowrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+      <Select
+        title="Cliente"
+        className="w-44"
+        value={clienteId}
+        onChange={(e) => cambiarCliente(Number(e.target.value))}
+      >
+        {clientes.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.nombre}
+          </option>
+        ))}
+      </Select>
+      <div className="flex items-center gap-1">
+        <Select
+          title="Proyecto"
+          className="w-48"
+          value={proyectoId}
+          onChange={(e) => cambiarProyecto(Number(e.target.value))}
+        >
+          {proyectosFiltrados.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nombre}
+            </option>
+          ))}
+        </Select>
+        <button
+          type="button"
+          onClick={() => setMostrarNuevoProyecto(true)}
+          title="Nuevo proyecto"
+          className="shrink-0 text-slate-400 hover:text-[var(--accent-primary)] dark:text-slate-500"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+      {proyectoActual ? (
+        <TareaPicker
+          proyecto={proyectoActual}
+          tareas={tareas}
+          estados={estados}
+          tareaId={tareaId}
+          onSeleccionar={setTareaId}
+          onTareaCreated={onTareaCreated}
+          className="w-48"
+        />
+      ) : (
+        <div className="flex h-[34px] w-48 items-center rounded-md border border-slate-200 px-2.5 text-sm text-slate-400 dark:border-slate-800">
+          Sin proyecto
+        </div>
+      )}
+      <Select
+        title="Tipo de trabajo"
+        className="w-44"
+        value={tipoTrabajoId}
+        onChange={(e) => setTipoTrabajoId(Number(e.target.value))}
+      >
+        {tipos.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.nombre}
+          </option>
+        ))}
+      </Select>
+      <div className="ml-2 flex items-center gap-2 border-l border-slate-200 pl-4 dark:border-slate-800">
+        <Button
+          onClick={iniciar}
+          disabled={starting || !proyectoId || !tipoTrabajoId}
+          title="Iniciar timer"
+          className="px-2"
+        >
+          <Play size={14} />
+        </Button>
+        <button
+          onClick={() => onAbrirRegistro({ tareaId, tipoTrabajoId })}
+          disabled={!proyectoId}
+          title="Nuevo registro manual"
+          className="shrink-0 text-slate-400 hover:text-slate-700 disabled:opacity-40 dark:hover:text-slate-200"
+        >
+          <CalendarPlus size={20} />
+        </button>
+      </div>
+      <ErrorText>{error}</ErrorText>
+    </div>
+  );
+
   const contenido = (
     <div className="flex flex-col gap-2">
-      <RegistrosRecientes
-        onRegistroManual={onAbrirRegistro}
-        mostrarCliente={!floating}
-        limite={floating ? 2 : undefined}
-      />
+      <RegistrosRecientes onRegistroManual={onAbrirRegistro} />
       {floating ? (
         <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-          <div className="grid grid-cols-2 gap-2">{campos}</div>
-          <div className="flex items-center gap-2">{acciones}</div>
+          <div className="grid grid-cols-2 gap-2">{camposFlotante}</div>
+          <div className="flex items-center gap-2">{accionesFlotante}</div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-          {campos}
-          {acciones}
-        </div>
+        filaInline
       )}
       <Modal
         open={mostrarNuevoProyecto}

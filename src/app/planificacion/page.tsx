@@ -19,14 +19,18 @@ import { DayColumn } from "@/components/planning/day-column";
 import { Button } from "@/components/ui";
 
 export default function PlanificacionPage() {
-  const { tareas, estados, loading: datosCargando, error: errorDatos } = useAppData();
+  const { tareas, estados, tema, loading: datosCargando, error: errorDatos } = useAppData();
   const [weekAnchor, setWeekAnchor] = useState(new Date());
   const [planificacion, setPlanificacion] = useState<PlanificacionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const dias = useMemo(() => weekDays(weekAnchor), [weekAnchor]);
-  const { start, end } = useMemo(() => weekRange(weekAnchor), [weekAnchor]);
+  const inicioSemana = (tema?.inicioSemana ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  const dias = useMemo(() => weekDays(weekAnchor, inicioSemana), [weekAnchor, inicioSemana]);
+  const { start, end } = useMemo(
+    () => weekRange(weekAnchor, inicioSemana),
+    [weekAnchor, inicioSemana],
+  );
 
   function cargarSemana() {
     setLoading(true);

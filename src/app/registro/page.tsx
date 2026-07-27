@@ -121,7 +121,7 @@ export default function RegistroPage() {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <div className="flex w-full max-w-4xl shrink-0 flex-col gap-4">
+      <div className="mx-auto flex w-fit max-w-full shrink-0 flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             Registro de Trabajo
@@ -264,6 +264,7 @@ export default function RegistroPage() {
             tareas={tareas}
             vista={vista}
             onVistaChange={setVista}
+            horaInicioDefault={tema?.horaInicioGrilla}
             onEdit={(registro) => {
               setEditing(registro);
               setSeleccion(null);

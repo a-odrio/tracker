@@ -1,36 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarPlus } from "lucide-react";
 import { useAppData } from "@/lib/app-data";
 import { raizDe } from "@/lib/tarea-tree";
 import { ErrorText } from "@/components/ui";
 
+const GAP = 8;
+const ANCHO_MIN = 150;
+const ANCHO_MAX = 220;
+
 /**
  * Accesos directos a los últimos trabajos registrados (timer o carga manual),
- * arriba de /registro. Click en la tarjeta arranca el timer directo con ese
- * combo; el botón de calendario abre el registro manual con cliente/proyecto/
- * tarea preseleccionados, dejando fecha/horas/tipo para completar. No ocupa
- * lugar si todavía no hay historial.
+ * arriba de /registro (y, más compacto, en el widget flotante). Click en la
+ * tarjeta arranca el timer directo con ese combo; el botón de calendario abre
+ * el registro manual con proyecto/tarea preseleccionados, dejando fecha/
+ * horas/tipo para completar. No ocupa lugar si todavía no hay historial.
+ *
+ * El ancho disponible se mide con ResizeObserver: la cantidad de tarjetas
+ * mostradas (hasta las que haya) y el ancho de cada una se ajustan para
+ * llenar esa fila exacta, sin salirse ni dejar hueco, con cada tarjeta
+ * acotada entre ANCHO_MIN y ANCHO_MAX.
  */
 export function RegistrosRecientes({
   onRegistroManual,
-  mostrarCliente = true,
-  limite,
 }: {
   onRegistroManual: (seed: { tareaId: number }) => void;
-  /** El widget flotante es angosto y no muestra cliente para que la tarjeta
-   * quepa junto a otra en la misma fila (ver `limite`). */
-  mostrarCliente?: boolean;
-  /** Tope de tarjetas a mostrar, para que entren en una sola fila en
-   * contextos angostos (widget flotante). Sin tope en /registro, donde hay
-   * lugar de sobra y se prefiere ver más historial. */
-  limite?: number;
 }) {
   const { tareas, tipos, timer, recientes, iniciarTimer } = useAppData();
   const [error, setError] = useState("");
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [anchoDisponible, setAnchoDisponible] = useState(0);
 
-  const items = recientes
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver((entries) => {
+      setAnchoDisponible(entries[0].contentRect.width);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const todos = recientes
     .map((r) => {
       const tarea = tareas.find((t) => t.id === r.tareaId);
       const tipo = tipos.find((t) => t.id === r.tipoTrabajoId);
@@ -38,10 +50,19 @@ export function RegistrosRecientes({
       const raiz = raizDe(tarea, tareas);
       return { tarea, tipo, raiz };
     })
-    .filter((item): item is NonNullable<typeof item> => item !== null)
-    .slice(0, limite ?? recientes.length);
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
-  if (items.length === 0) return null;
+  if (todos.length === 0) return null;
+
+  const count =
+    anchoDisponible > 0
+      ? Math.max(1, Math.min(todos.length, Math.floor((anchoDisponible + GAP) / (ANCHO_MIN + GAP))))
+      : todos.length;
+  const anchoTarjeta =
+    anchoDisponible > 0
+      ? Math.min(ANCHO_MAX, (anchoDisponible - (count - 1) * GAP) / count)
+      : ANCHO_MIN;
+  const items = todos.slice(0, count);
 
   async function iniciar(tareaId: number, tipoTrabajoId: number) {
     setError("");
@@ -53,20 +74,17 @@ export function RegistrosRecientes({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className={`flex gap-2 ${limite !== undefined ? "flex-nowrap" : "flex-wrap"}`}>
+    <div ref={wrapRef} className="flex flex-col gap-1.5">
+      <div className="flex flex-nowrap gap-2">
         {items.map(({ tarea, tipo, raiz }) => {
-          const subtitulo = [
-            mostrarCliente ? raiz.cliente?.nombre : null,
-            tarea.id !== raiz.id ? raiz.nombre : null,
-            tipo.nombre,
-          ]
+          const subtitulo = [tarea.id !== raiz.id ? raiz.nombre : null, tipo.nombre]
             .filter(Boolean)
             .join(" · ");
           return (
             <div
               key={`${tarea.id}-${tipo.id}`}
-              className="relative flex w-44 shrink-0 flex-col rounded-lg border border-slate-200 bg-white py-2 pr-6 pl-3 dark:border-slate-800 dark:bg-slate-900"
+              style={{ width: anchoDisponible > 0 ? anchoTarjeta : undefined }}
+              className="relative flex min-w-0 flex-1 flex-col rounded-lg border border-slate-200 bg-white py-2 pr-6 pl-3 dark:border-slate-800 dark:bg-slate-900"
             >
               <button
                 type="button"

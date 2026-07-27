@@ -6,6 +6,8 @@ export interface TemaItem {
   avisoTimerHoras: number;
   /** Día en que arranca la semana en la grilla de Registro (0=domingo..6=sábado). */
   inicioSemana: number;
+  /** Hora (0-23) en la que arranca por defecto la grilla de Registro. */
+  horaInicioGrilla: number;
 }
 
 export interface EstadoItem {

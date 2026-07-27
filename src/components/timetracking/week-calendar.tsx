@@ -61,6 +61,7 @@ export function WeekCalendar({
   onSelect,
   vista,
   onVistaChange,
+  horaInicioDefault = HORA_INICIO_DEFAULT,
 }: {
   dias: Date[];
   registros: RegistroTiempoItem[];
@@ -71,6 +72,9 @@ export function WeekCalendar({
   onSelect?: (fecha: string, horaInicio: string, horaFin: string) => void;
   vista: VistaCalendario;
   onVistaChange: (vista: VistaCalendario) => void;
+  /** Hora en la que arranca la grilla por defecto (configurable) — igual se
+   * expande hacia atrás si hay algún registro más temprano. */
+  horaInicioDefault?: number;
 }) {
   const [vistaAbierta, setVistaAbierta] = useState(false);
   const vistaRef = useRef<HTMLDivElement>(null);
@@ -87,14 +91,14 @@ export function WeekCalendar({
   }, [vistaAbierta]);
 
   const { horaInicioEje, horaFinEje } = useMemo(() => {
-    let min = HORA_INICIO_DEFAULT;
+    let min = horaInicioDefault;
     let max = 21;
     for (const r of registros) {
       min = Math.min(min, Math.floor(timeToMinutes(r.horaInicio) / 60));
       max = Math.max(max, Math.ceil(timeToMinutes(r.horaFin) / 60));
     }
     return { horaInicioEje: min, horaFinEje: max };
-  }, [registros]);
+  }, [registros, horaInicioDefault]);
 
   const rangeRef = useRef({ horaInicioEje, horaFinEje });
   useEffect(() => {
@@ -209,7 +213,7 @@ export function WeekCalendar({
                     }}
                     className={`block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-slate-100 dark:hover:bg-slate-800 ${
                       vista === o.value
-                        ? "font-medium text-[var(--accent-primary)]"
+                        ? "bg-[var(--accent-primary)]/10 font-medium text-slate-900 dark:text-slate-100"
                         : "text-slate-700 dark:text-slate-300"
                     }`}
                   >
