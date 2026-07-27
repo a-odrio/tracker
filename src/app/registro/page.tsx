@@ -15,7 +15,8 @@ import {
 } from "@/lib/utils";
 import { Button, ConfirmDialog, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
-import { TimerBar } from "@/components/timetracking/timer-bar";
+import { TimerBar, type SeedRegistro } from "@/components/timetracking/timer-bar";
+import { RegistrosRecientes } from "@/components/timetracking/registros-recientes";
 import { WeekCalendar } from "@/components/timetracking/week-calendar";
 
 export default function RegistroPage() {
@@ -79,6 +80,12 @@ export default function RegistroPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start.getTime(), end.getTime()]);
 
+  function abrirRegistroManual(seed: SeedRegistro) {
+    setEditing(null);
+    setSeleccion(seed);
+    setShowForm(true);
+  }
+
   async function eliminar(registro: RegistroTiempoItem) {
     await apiDelete(`/api/registros-tiempo/${registro.id}`);
     setRegistros((prev) => prev.filter((r) => r.id !== registro.id));
@@ -127,7 +134,8 @@ export default function RegistroPage() {
       </div>
 
       {datosListos && tema && (
-        <div className="shrink-0">
+        <div className="flex shrink-0 flex-col gap-3">
+          <RegistrosRecientes onRegistroManual={abrirRegistroManual} />
           <TimerBar
             clientes={clientes}
             tareas={tareas}
@@ -137,11 +145,7 @@ export default function RegistroPage() {
             clienteInicial={clienteFiltro || undefined}
             avisoTimerHoras={tema.avisoTimerHoras}
             onTareaCreated={upsertTarea}
-            onAbrirRegistro={(seed) => {
-              setEditing(null);
-              setSeleccion(seed);
-              setShowForm(true);
-            }}
+            onAbrirRegistro={abrirRegistroManual}
           />
         </div>
       )}

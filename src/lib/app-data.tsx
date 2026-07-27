@@ -10,9 +10,17 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { apiGet, apiPatch } from "@/lib/api-client";
-import type { ClienteItem, EstadoItem, TareaItem, TemaItem, TipoTrabajoItem } from "@/lib/types";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api-client";
+import type {
+  ClienteItem,
+  EstadoItem,
+  TareaItem,
+  TemaItem,
+  TimerActivoItem,
+  TipoTrabajoItem,
+} from "@/lib/types";
 import { padreRecienCerrado } from "@/lib/tarea-tree";
+import { obtenerRecientes, registrarUso, type ComboReciente } from "@/lib/recientes";
 
 type AppData = {
   /** Todos los clientes, incluidos archivados — usar `clientesActivos` donde
@@ -48,6 +56,20 @@ type AppData = {
   dismissPadreParaCerrar: () => void;
   /** Lleva `padreParaCerrar` al estado `esFinal` fijo y limpia el aviso. */
   finalizarPadre: () => Promise<void>;
+  /** Timer activo, compartido para que cualquier pantalla/widget que pueda
+   * iniciar uno (TimerBar, accesos directos de /registro) vea el mismo
+   * estado sin desfasarse entre sí. */
+  timer: TimerActivoItem | null;
+  timerLoading: boolean;
+  iniciarTimer: (tareaId: number, tipoTrabajoId: number) => Promise<TimerActivoItem>;
+  /** Detiene el timer activo y devuelve cómo estaba justo antes de pararlo
+   * (para que quien llama arme el registro manual a partir de su inicio). */
+  detenerTimer: () => Promise<TimerActivoItem | null>;
+  descartarTimer: () => Promise<void>;
+  /** Últimos combos tarea+tipo usados (timer iniciado o registro guardado),
+   * más reciente primero — alimenta los accesos directos de /registro. */
+  recientes: ComboReciente[];
+  registrarTrabajoReciente: (tareaId: number, tipoTrabajoId: number) => void;
 };
 
 const AppDataContext = createContext<AppData | null>(null);
@@ -69,6 +91,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
+  const [timer, setTimer] = useState<TimerActivoItem | null>(null);
+  const [timerLoading, setTimerLoading] = useState(true);
+  const [recientes, setRecientes] = useState<ComboReciente[]>([]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage solo existe en cliente, se lee post-hydration
+    setRecientes(obtenerRecientes());
+  }, []);
+
+  useEffect(() => {
+    apiGet<TimerActivoItem | null>("/api/timer")
+      .then(setTimer)
+      .finally(() => setTimerLoading(false));
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -124,6 +160,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setPadreParaCerrar(null);
   }
 
+  function registrarTrabajoReciente(tareaId: number, tipoTrabajoId: number) {
+    registrarUso(tareaId, tipoTrabajoId);
+    setRecientes(obtenerRecientes());
+  }
+
+  async function iniciarTimer(tareaId: number, tipoTrabajoId: number) {
+    const nuevo = await apiPost<TimerActivoItem>("/api/timer", { tareaId, tipoTrabajoId });
+    setTimer(nuevo);
+    registrarTrabajoReciente(tareaId, tipoTrabajoId);
+    return nuevo;
+  }
+
+  async function detenerTimer() {
+    const activo = timer;
+    await apiDelete("/api/timer");
+    setTimer(null);
+    return activo;
+  }
+
+  async function descartarTimer() {
+    await apiDelete("/api/timer");
+    setTimer(null);
+  }
+
   return (
     <AppDataContext.Provider
       value={{
@@ -146,6 +206,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         padreParaCerrar,
         dismissPadreParaCerrar: () => setPadreParaCerrar(null),
         finalizarPadre,
+        timer,
+        timerLoading,
+        iniciarTimer,
+        detenerTimer,
+        descartarTimer,
+        recientes,
+        registrarTrabajoReciente,
       }}
     >
       {children}

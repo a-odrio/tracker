@@ -2,14 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { CalendarPlus, Clock, Play, Plus, Square, X } from "lucide-react";
-import { apiDelete, apiGet, apiPost } from "@/lib/api-client";
-import type {
-  ClienteItem,
-  EstadoItem,
-  TareaItem,
-  TimerActivoItem,
-  TipoTrabajoItem,
-} from "@/lib/types";
+import type { ClienteItem, EstadoItem, TareaItem, TipoTrabajoItem } from "@/lib/types";
+import { useAppData } from "@/lib/app-data";
 import { raizDe } from "@/lib/tarea-tree";
 import { minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
 import { Button, ConfirmDialog, ErrorText, InlineBanner, Modal, Select } from "@/components/ui";
@@ -78,8 +72,7 @@ export function TimerBar({
    * corriendo por olvido (configurable en Configuración). */
   avisoTimerHoras?: number;
 }) {
-  const [timer, setTimer] = useState<TimerActivoItem | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { timer, timerLoading, iniciarTimer, detenerTimer, descartarTimer } = useAppData();
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
@@ -113,12 +106,6 @@ export function TimerBar({
   const [tipoTrabajoId, setTipoTrabajoId] = useState(tipos[0]?.id ?? 0);
 
   useEffect(() => {
-    apiGet<TimerActivoItem | null>("/api/timer")
-      .then((t) => setTimer(t))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
     if (!timer) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -135,11 +122,7 @@ export function TimerBar({
     setError("");
     setStarting(true);
     try {
-      const nuevo = await apiPost<TimerActivoItem>("/api/timer", {
-        tareaId,
-        tipoTrabajoId,
-      });
-      setTimer(nuevo);
+      await iniciarTimer(tareaId, tipoTrabajoId);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -152,15 +135,15 @@ export function TimerBar({
     setError("");
     setStopping(true);
     try {
+      const activo = await detenerTimer();
+      if (!activo) return;
       const { fecha, horaInicio, horaFin } = horasParaDetener(
-        new Date(timer.inicio),
+        new Date(activo.inicio),
         new Date(),
       );
-      await apiDelete("/api/timer");
-      setTimer(null);
       onAbrirRegistro({
-        tareaId: timer.tareaId,
-        tipoTrabajoId: timer.tipoTrabajoId,
+        tareaId: activo.tareaId,
+        tipoTrabajoId: activo.tipoTrabajoId,
         fecha,
         horaInicio,
         horaFin,
@@ -173,12 +156,11 @@ export function TimerBar({
   }
 
   async function descartar() {
-    await apiDelete("/api/timer");
-    setTimer(null);
+    await descartarTimer();
     setConfirmandoDescarte(false);
   }
 
-  if (loading) {
+  if (timerLoading) {
     if (floating) return null;
     return (
       <div className="h-[60px] rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />
