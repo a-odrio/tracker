@@ -279,7 +279,7 @@ function NodoPicker({
             type="button"
             onClick={crearSubtarea}
             disabled={!nombreNuevo.trim() || creando}
-            className="shrink-0 text-xs font-medium text-[var(--accent-primary)] hover:underline disabled:opacity-40"
+            className="shrink-0 text-xs font-medium text-slate-700 hover:text-[var(--accent-primary)] hover:underline disabled:opacity-40 dark:text-slate-200"
           >
             Agregar
           </button>

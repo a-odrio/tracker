@@ -117,7 +117,7 @@ export function ClienteSeccion({
 
           <button
             onClick={onNuevoProyecto}
-            className="mt-1 flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-[var(--accent-primary)] hover:bg-slate-50 dark:hover:bg-slate-800/60"
+            className="mt-1 flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50 hover:text-[var(--accent-primary)] dark:text-slate-400 dark:hover:bg-slate-800/60"
           >
             <Plus size={13} /> Nuevo proyecto
           </button>

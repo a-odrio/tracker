@@ -410,7 +410,7 @@ function TaskFormInner({
             <button
               type="button"
               onClick={() => onDrillIn({ parentId: tarea.id })}
-              className="flex items-center gap-0.5 text-xs font-medium text-[var(--accent-primary)] hover:underline"
+              className="flex items-center gap-0.5 text-xs font-medium text-slate-400 hover:text-[var(--accent-primary)] hover:underline dark:text-slate-500"
             >
               <Plus size={11} /> Agregar subtarea
             </button>

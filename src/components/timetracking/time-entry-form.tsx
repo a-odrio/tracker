@@ -235,7 +235,7 @@ export function TimeEntryForm({
             <button
               type="button"
               onClick={() => setSubModal("nuevo-proyecto")}
-              className="flex items-center gap-0.5 text-xs font-medium text-[var(--accent-primary)] hover:underline"
+              className="flex items-center gap-0.5 text-xs font-medium text-slate-400 hover:text-[var(--accent-primary)] hover:underline dark:text-slate-500"
             >
               <Plus size={11} /> Nuevo
             </button>
@@ -274,7 +274,7 @@ export function TimeEntryForm({
             <button
               type="button"
               onClick={() => setSubModal("nuevo-tipo")}
-              className="flex items-center gap-0.5 text-xs font-medium text-[var(--accent-primary)] hover:underline"
+              className="flex items-center gap-0.5 text-xs font-medium text-slate-400 hover:text-[var(--accent-primary)] hover:underline dark:text-slate-500"
             >
               <Plus size={11} /> Nuevo
             </button>
