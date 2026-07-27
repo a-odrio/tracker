@@ -16,7 +16,6 @@ import {
 import { Button, ConfirmDialog, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
 import { TimerBar, type SeedRegistro } from "@/components/timetracking/timer-bar";
-import { RegistrosRecientes } from "@/components/timetracking/registros-recientes";
 import { WeekCalendar } from "@/components/timetracking/week-calendar";
 
 export default function RegistroPage() {
@@ -134,8 +133,7 @@ export default function RegistroPage() {
       </div>
 
       {datosListos && tema && (
-        <div className="flex shrink-0 flex-col gap-3">
-          <RegistrosRecientes onRegistroManual={abrirRegistroManual} />
+        <div className="shrink-0">
           <TimerBar
             clientes={clientes}
             tareas={tareas}

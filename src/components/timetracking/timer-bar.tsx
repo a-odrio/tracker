@@ -11,6 +11,7 @@ import { TaskForm } from "@/components/tasks/task-form";
 import { TareaPicker } from "@/components/tasks/tarea-picker";
 import { useClienteProyectoSelector } from "@/components/timetracking/use-cliente-proyecto-selector";
 import { FloatingCard } from "@/components/timetracking/floating-card";
+import { RegistrosRecientes } from "@/components/timetracking/registros-recientes";
 
 export type SeedRegistro = {
   tareaId?: number;
@@ -249,7 +250,8 @@ export function TimerBar({
   }
 
   const contenido = (
-    <>
+    <div className="flex flex-col gap-2">
+      <RegistrosRecientes onRegistroManual={onAbrirRegistro} />
       <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <div>
           <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Cliente</label>
@@ -363,7 +365,7 @@ export function TimerBar({
           onCancel={() => setMostrarNuevoProyecto(false)}
         />
       </Modal>
-    </>
+    </div>
   );
 
   return floating ? (
