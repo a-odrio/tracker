@@ -15,8 +15,17 @@ import { ErrorText } from "@/components/ui";
  */
 export function RegistrosRecientes({
   onRegistroManual,
+  mostrarCliente = true,
+  limite,
 }: {
   onRegistroManual: (seed: { tareaId: number }) => void;
+  /** El widget flotante es angosto y no muestra cliente para que la tarjeta
+   * quepa junto a otra en la misma fila (ver `limite`). */
+  mostrarCliente?: boolean;
+  /** Tope de tarjetas a mostrar, para que entren en una sola fila en
+   * contextos angostos (widget flotante). Sin tope en /registro, donde hay
+   * lugar de sobra y se prefiere ver más historial. */
+  limite?: number;
 }) {
   const { tareas, tipos, timer, recientes, iniciarTimer } = useAppData();
   const [error, setError] = useState("");
@@ -29,7 +38,8 @@ export function RegistrosRecientes({
       const raiz = raizDe(tarea, tareas);
       return { tarea, tipo, raiz };
     })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .slice(0, limite ?? recientes.length);
 
   if (items.length === 0) return null;
 
@@ -44,37 +54,45 @@ export function RegistrosRecientes({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap gap-2">
-        {items.map(({ tarea, tipo, raiz }) => (
-          <div
-            key={`${tarea.id}-${tipo.id}`}
-            className="relative flex w-48 flex-col rounded-lg border border-slate-200 bg-white py-2 pr-6 pl-3 dark:border-slate-800 dark:bg-slate-900"
-          >
-            <button
-              type="button"
-              onClick={() => iniciar(tarea.id, tipo.id)}
-              disabled={!!timer}
-              title={timer ? "Ya hay un timer en curso" : `Iniciar timer: ${tarea.nombre}`}
-              className="flex flex-col gap-0.5 text-left disabled:cursor-not-allowed disabled:opacity-50"
+      <div className={`flex gap-2 ${limite !== undefined ? "flex-nowrap" : "flex-wrap"}`}>
+        {items.map(({ tarea, tipo, raiz }) => {
+          const subtitulo = [
+            mostrarCliente ? raiz.cliente?.nombre : null,
+            tarea.id !== raiz.id ? raiz.nombre : null,
+            tipo.nombre,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            <div
+              key={`${tarea.id}-${tipo.id}`}
+              className="relative flex w-44 shrink-0 flex-col rounded-lg border border-slate-200 bg-white py-2 pr-6 pl-3 dark:border-slate-800 dark:bg-slate-900"
             >
-              <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                {tarea.id === raiz.id ? raiz.nombre : tarea.nombre}
-              </span>
-              <span className="truncate text-xs text-slate-500 dark:text-slate-400">
-                {raiz.cliente?.nombre}
-                {tarea.id !== raiz.id ? ` · ${raiz.nombre}` : ""} · {tipo.nombre}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onRegistroManual({ tareaId: tarea.id })}
-              title="Cargar como registro manual"
-              className="absolute top-2 right-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-            >
-              <CalendarPlus size={14} />
-            </button>
-          </div>
-        ))}
+              <button
+                type="button"
+                onClick={() => iniciar(tarea.id, tipo.id)}
+                disabled={!!timer}
+                title={timer ? "Ya hay un timer en curso" : `Iniciar timer: ${tarea.nombre}`}
+                className="flex flex-col gap-0.5 text-left disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {tarea.id === raiz.id ? raiz.nombre : tarea.nombre}
+                </span>
+                <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {subtitulo}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onRegistroManual({ tareaId: tarea.id })}
+                title="Cargar como registro manual"
+                className="absolute top-2 right-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                <CalendarPlus size={14} />
+              </button>
+            </div>
+          );
+        })}
       </div>
       <ErrorText>{error}</ErrorText>
     </div>

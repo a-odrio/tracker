@@ -249,100 +249,123 @@ export function TimerBar({
     );
   }
 
+  const campos = (
+    <>
+      <div>
+        <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Cliente</label>
+        <Select
+          className="w-36"
+          value={clienteId}
+          onChange={(e) => cambiarCliente(Number(e.target.value))}
+        >
+          {clientes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <label className="text-xs text-slate-500 dark:text-slate-400">Proyecto</label>
+          <button
+            type="button"
+            onClick={() => setMostrarNuevoProyecto(true)}
+            title="Nuevo proyecto"
+            className="text-slate-400 hover:text-[var(--accent-primary)] dark:text-slate-500"
+          >
+            <Plus size={12} />
+          </button>
+        </div>
+        <Select
+          className="w-40"
+          value={proyectoId}
+          onChange={(e) => cambiarProyecto(Number(e.target.value))}
+        >
+          {proyectosFiltrados.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nombre}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Tarea</label>
+        {proyectoActual ? (
+          <TareaPicker
+            proyecto={proyectoActual}
+            tareas={tareas}
+            estados={estados}
+            tareaId={tareaId}
+            onSeleccionar={setTareaId}
+            onTareaCreated={onTareaCreated}
+            className="w-40"
+          />
+        ) : (
+          <div className="flex h-[34px] w-40 items-center rounded-md border border-slate-200 px-2.5 text-sm text-slate-400 dark:border-slate-800">
+            Sin proyecto
+          </div>
+        )}
+      </div>
+      <div>
+        <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">
+          Tipo de trabajo
+        </label>
+        <Select
+          className="w-36"
+          value={tipoTrabajoId}
+          onChange={(e) => setTipoTrabajoId(Number(e.target.value))}
+        >
+          {tipos.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.nombre}
+            </option>
+          ))}
+        </Select>
+      </div>
+    </>
+  );
+
+  const acciones = (
+    <>
+      <Button
+        onClick={iniciar}
+        disabled={starting || !proyectoId || !tipoTrabajoId}
+        title="Iniciar timer"
+        className="px-2"
+      >
+        <Play size={14} />
+      </Button>
+      <button
+        onClick={() => onAbrirRegistro({ tareaId, tipoTrabajoId })}
+        disabled={!proyectoId}
+        title="Nuevo registro manual"
+        className="shrink-0 text-slate-400 hover:text-slate-700 disabled:opacity-40 dark:hover:text-slate-200"
+      >
+        <CalendarPlus size={20} />
+      </button>
+      <ErrorText>{error}</ErrorText>
+    </>
+  );
+
   const contenido = (
     <div className="flex flex-col gap-2">
-      <RegistrosRecientes onRegistroManual={onAbrirRegistro} />
-      <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-        <div>
-          <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Cliente</label>
-          <Select
-            className="w-36"
-            value={clienteId}
-            onChange={(e) => cambiarCliente(Number(e.target.value))}
-          >
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </Select>
+      <RegistrosRecientes
+        onRegistroManual={onAbrirRegistro}
+        mostrarCliente={!floating}
+        limite={floating ? 2 : undefined}
+      />
+      {floating ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+          <div className="grid grid-cols-2 gap-2">{campos}</div>
+          <div className="flex items-center gap-2">{acciones}</div>
         </div>
-        <div>
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-xs text-slate-500 dark:text-slate-400">Proyecto</label>
-            <button
-              type="button"
-              onClick={() => setMostrarNuevoProyecto(true)}
-              title="Nuevo proyecto"
-              className="text-[var(--accent-primary)] hover:opacity-70"
-            >
-              <Plus size={12} />
-            </button>
-          </div>
-          <Select
-            className="w-40"
-            value={proyectoId}
-            onChange={(e) => cambiarProyecto(Number(e.target.value))}
-          >
-            {proyectosFiltrados.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </Select>
+      ) : (
+        <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+          {campos}
+          {acciones}
         </div>
-        <div>
-          <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Tarea</label>
-          {proyectoActual ? (
-            <TareaPicker
-              proyecto={proyectoActual}
-              tareas={tareas}
-              estados={estados}
-              tareaId={tareaId}
-              onSeleccionar={setTareaId}
-              onTareaCreated={onTareaCreated}
-              className="w-40"
-            />
-          ) : (
-            <div className="flex h-[34px] w-40 items-center rounded-md border border-slate-200 px-2.5 text-sm text-slate-400 dark:border-slate-800">
-              Sin proyecto
-            </div>
-          )}
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">
-            Tipo de trabajo
-          </label>
-          <Select
-            className="w-36"
-            value={tipoTrabajoId}
-            onChange={(e) => setTipoTrabajoId(Number(e.target.value))}
-          >
-            {tipos.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nombre}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <Button
-          onClick={iniciar}
-          disabled={starting || !proyectoId || !tipoTrabajoId}
-          title="Iniciar timer"
-          className="px-2"
-        >
-          <Play size={14} />
-        </Button>
-        <button
-          onClick={() => onAbrirRegistro({ tareaId, tipoTrabajoId })}
-          disabled={!proyectoId}
-          title="Nuevo registro manual"
-          className="shrink-0 text-slate-400 hover:text-slate-700 disabled:opacity-40 dark:hover:text-slate-200"
-        >
-          <CalendarPlus size={20} />
-        </button>
-        <ErrorText>{error}</ErrorText>
-      </div>
+      )}
       <Modal
         open={mostrarNuevoProyecto}
         onClose={() => setMostrarNuevoProyecto(false)}

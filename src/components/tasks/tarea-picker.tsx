@@ -37,9 +37,22 @@ export function TareaPicker({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [haciaArriba, setHaciaArriba] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const estadoInicialId = estados.find((e) => e.esInicial)?.id ?? estados[0]?.id ?? 0;
+
+  /** El panel puede ocupar hasta ~320px (buscador + árbol) — si no entra
+   * abajo (ej. el picker del timer flotante, pegado al borde inferior), se
+   * abre hacia arriba en vez de salirse de la pantalla. */
+  function abrir() {
+    if (btnRef.current) {
+      const espacioAbajo = window.innerHeight - btnRef.current.getBoundingClientRect().bottom;
+      setHaciaArriba(espacioAbajo < 320);
+    }
+    setOpen(true);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -89,15 +102,20 @@ export function TareaPicker({
   return (
     <div ref={ref} className="relative">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? cerrar() : abrir())}
         className={`flex items-center justify-between gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-left text-sm text-slate-900 outline-none focus:border-[var(--accent-primary)] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 ${className}`}
       >
         <span className="truncate">{seleccionada.nombre}</span>
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-1 w-72 rounded-md border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+        <div
+          className={`absolute z-30 left-0 w-72 rounded-md border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-800 dark:bg-slate-900 ${
+            haciaArriba ? "bottom-full mb-1" : "top-full mt-1"
+          }`}
+        >
           <div className="relative mb-2">
             <Search
               size={13}

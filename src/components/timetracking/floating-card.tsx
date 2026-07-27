@@ -37,7 +37,7 @@ export function FloatingCard({
   }
 
   return (
-    <div className="relative w-[320px] shadow-lg">
+    <div className="relative w-[400px] shadow-lg">
       {collapsible && (
         <button
           type="button"
