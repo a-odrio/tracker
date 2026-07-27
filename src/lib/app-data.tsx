@@ -14,13 +14,13 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api-client";
 import type {
   ClienteItem,
   EstadoItem,
+  RegistroTiempoItem,
   TareaItem,
   TemaItem,
   TimerActivoItem,
   TipoTrabajoItem,
 } from "@/lib/types";
 import { padreRecienCerrado } from "@/lib/tarea-tree";
-import { obtenerRecientes, registrarUso, type ComboReciente } from "@/lib/recientes";
 
 type AppData = {
   /** Todos los clientes, incluidos archivados — usar `clientesActivos` donde
@@ -66,10 +66,11 @@ type AppData = {
    * (para que quien llama arme el registro manual a partir de su inicio). */
   detenerTimer: () => Promise<TimerActivoItem | null>;
   descartarTimer: () => Promise<void>;
-  /** Últimos combos tarea+tipo usados (timer iniciado o registro guardado),
-   * más reciente primero — alimenta los accesos directos de /registro. */
-  recientes: ComboReciente[];
-  registrarTrabajoReciente: (tareaId: number, tipoTrabajoId: number) => void;
+  /** Últimos registros guardados, uno por combo tarea+tipo distinto (más
+   * reciente primero) — alimenta los accesos directos de /registro. Se
+   * derivan de RegistroTiempo, no de un cache aparte. */
+  recientes: RegistroTiempoItem[];
+  refrescarRecientes: () => Promise<void>;
 };
 
 const AppDataContext = createContext<AppData | null>(null);
@@ -93,17 +94,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
   const [timer, setTimer] = useState<TimerActivoItem | null>(null);
   const [timerLoading, setTimerLoading] = useState(true);
-  const [recientes, setRecientes] = useState<ComboReciente[]>([]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage solo existe en cliente, se lee post-hydration
-    setRecientes(obtenerRecientes());
-  }, []);
+  const [recientes, setRecientes] = useState<RegistroTiempoItem[]>([]);
 
   useEffect(() => {
     apiGet<TimerActivoItem | null>("/api/timer")
       .then(setTimer)
       .finally(() => setTimerLoading(false));
+  }, []);
+
+  useEffect(() => {
+    apiGet<RegistroTiempoItem[]>("/api/registros-tiempo/recientes")
+      .then(setRecientes)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -160,15 +162,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setPadreParaCerrar(null);
   }
 
-  function registrarTrabajoReciente(tareaId: number, tipoTrabajoId: number) {
-    registrarUso(tareaId, tipoTrabajoId);
-    setRecientes(obtenerRecientes());
+  async function refrescarRecientes() {
+    const nuevos = await apiGet<RegistroTiempoItem[]>("/api/registros-tiempo/recientes");
+    setRecientes(nuevos);
   }
 
   async function iniciarTimer(tareaId: number, tipoTrabajoId: number) {
     const nuevo = await apiPost<TimerActivoItem>("/api/timer", { tareaId, tipoTrabajoId });
     setTimer(nuevo);
-    registrarTrabajoReciente(tareaId, tipoTrabajoId);
     return nuevo;
   }
 
@@ -212,7 +213,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         detenerTimer,
         descartarTimer,
         recientes,
-        registrarTrabajoReciente,
+        refrescarRecientes,
       }}
     >
       {children}

@@ -78,7 +78,7 @@ export function TimeEntryForm({
   onSaved: (registro: RegistroTiempoItem) => void;
   onCancel?: () => void;
 }) {
-  const { registrarTrabajoReciente } = useAppData();
+  const { refrescarRecientes } = useAppData();
   const [subModal, setSubModal] = useState<SubModal>(null);
   const [fecha, setFecha] = useState(
     registro?.fecha.slice(0, 10) ?? valoresIniciales?.fecha ?? toDateOnlyISO(new Date()),
@@ -164,7 +164,7 @@ export function TimeEntryForm({
           )
         : await apiPost<RegistroTiempoItem>("/api/registros-tiempo", payload);
       onSaved(resultado);
-      registrarTrabajoReciente(payload.tareaId, payload.tipoTrabajoId);
+      refrescarRecientes();
       if (!registro) {
         setComentarios("");
       }

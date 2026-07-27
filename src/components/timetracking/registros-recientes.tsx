@@ -22,15 +22,14 @@ export function RegistrosRecientes({
   const [error, setError] = useState("");
 
   const items = recientes
-    .map((c) => {
-      const tarea = tareas.find((t) => t.id === c.tareaId);
-      const tipo = tipos.find((t) => t.id === c.tipoTrabajoId);
+    .map((r) => {
+      const tarea = tareas.find((t) => t.id === r.tareaId);
+      const tipo = tipos.find((t) => t.id === r.tipoTrabajoId);
       if (!tarea || !tipo) return null;
       const raiz = raizDe(tarea, tareas);
       return { tarea, tipo, raiz };
     })
-    .filter((item): item is NonNullable<typeof item> => item !== null)
-    .slice(0, 4);
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   if (items.length === 0) return null;
 
