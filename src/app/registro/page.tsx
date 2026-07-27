@@ -152,6 +152,29 @@ export default function RegistroPage() {
         </div>
       </div>
 
+      <div className="flex w-fit max-w-full shrink-0 flex-col gap-4">
+        {datosListos && tema && (
+          <TimerBar
+            clientes={clientes}
+            tareas={tareas}
+            tipos={tipos}
+            estados={estados}
+            colorPrincipal={tema.colorPrincipal}
+            clienteInicial={clienteFiltro || undefined}
+            avisoTimerHoras={tema.avisoTimerHoras}
+            onTareaCreated={upsertTarea}
+            onAbrirRegistro={abrirRegistroManual}
+          />
+        )}
+
+        {!hayProyectos && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
+            Necesitás crear al menos un cliente y un proyecto antes de cargar registros.
+            Andá a Proyectos.
+          </p>
+        )}
+      </div>
+
       <div className="flex shrink-0 flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-500 dark:text-slate-400">Cliente</span>
@@ -174,29 +197,6 @@ export default function RegistroPage() {
           Total semana:{" "}
           <span className="font-medium">{totalHoras.toFixed(2)}h</span>
         </span>
-      </div>
-
-      <div className="flex w-fit max-w-full shrink-0 flex-col gap-4">
-        {datosListos && tema && (
-          <TimerBar
-            clientes={clientes}
-            tareas={tareas}
-            tipos={tipos}
-            estados={estados}
-            colorPrincipal={tema.colorPrincipal}
-            clienteInicial={clienteFiltro || undefined}
-            avisoTimerHoras={tema.avisoTimerHoras}
-            onTareaCreated={upsertTarea}
-            onAbrirRegistro={abrirRegistroManual}
-          />
-        )}
-
-        {!hayProyectos && (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
-            Necesitás crear al menos un cliente y un proyecto antes de cargar registros.
-            Andá a Proyectos.
-          </p>
-        )}
       </div>
 
       {tema && (
