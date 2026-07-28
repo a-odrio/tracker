@@ -91,3 +91,22 @@ export interface PlanificacionItem {
   horasPlanificadas: number | null;
   tarea?: TareaItem;
 }
+
+export interface CalendarioExternoItem {
+  id: number;
+  nombre: string;
+  urlIcs: string;
+  color: string;
+  activo: boolean;
+}
+
+/** Evento de un calendario externo (de solo lectura, no persiste en la base
+ * — se resuelve al vuelo desde el feed ICS para el rango pedido). */
+export interface EventoCalendarioItem {
+  calendarioId: number;
+  uid: string;
+  titulo: string;
+  inicio: string;
+  fin: string;
+  color: string;
+}

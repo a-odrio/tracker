@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarRange } from "lucide-react";
-import type { RegistroTiempoItem, TareaItem } from "@/lib/types";
+import { CalendarPlus, CalendarRange } from "lucide-react";
+import type { EventoCalendarioItem, RegistroTiempoItem, TareaItem } from "@/lib/types";
 import { raizDe } from "@/lib/tarea-tree";
 import { formatDate, minutesToTime, timeToMinutes, toDateOnlyISO } from "@/lib/utils";
 
@@ -22,14 +22,19 @@ const OPCIONES_VISTA: { value: VistaCalendario; label: string }[] = [
   { value: "completa", label: "Semana completa" },
 ];
 
-function layoutDia(items: RegistroTiempoItem[]) {
-  const ordenados = [...items].sort(
-    (a, b) => timeToMinutes(a.horaInicio) - timeToMinutes(b.horaInicio),
-  );
+/** Empaqueta intervalos que se solapan en columnas lado a lado — compartido
+ * por registros propios y eventos de calendarios externos, cada uno con su
+ * propia noción de "inicio/fin en minutos". */
+function layoutIntervalos<T>(
+  items: T[],
+  inicioDe: (item: T) => number,
+  finDe: (item: T) => number,
+) {
+  const ordenados = [...items].sort((a, b) => inicioDe(a) - inicioDe(b));
   const columnaFin: number[] = [];
-  const posiciones = ordenados.map((registro) => {
-    const inicio = timeToMinutes(registro.horaInicio);
-    const fin = timeToMinutes(registro.horaFin);
+  const posiciones = ordenados.map((item) => {
+    const inicio = inicioDe(item);
+    const fin = finDe(item);
     let columna = columnaFin.findIndex((finCol) => finCol <= inicio);
     if (columna === -1) {
       columna = columnaFin.length;
@@ -37,7 +42,7 @@ function layoutDia(items: RegistroTiempoItem[]) {
     } else {
       columnaFin[columna] = fin;
     }
-    return { registro, columna, inicio, fin };
+    return { item, columna, inicio, fin };
   });
 
   return posiciones.map((pos) => {
@@ -45,12 +50,33 @@ function layoutDia(items: RegistroTiempoItem[]) {
       (p) => p.inicio < pos.fin && p.fin > pos.inicio,
     );
     const totalColumnas = Math.max(...solapantes.map((p) => p.columna)) + 1;
-    return {
-      registro: pos.registro,
-      left: pos.columna / totalColumnas,
-      width: 1 / totalColumnas,
-    };
+    return { item: pos.item, left: pos.columna / totalColumnas, width: 1 / totalColumnas };
   });
+}
+
+function layoutDia(items: RegistroTiempoItem[]) {
+  return layoutIntervalos(
+    items,
+    (r) => timeToMinutes(r.horaInicio),
+    (r) => timeToMinutes(r.horaFin),
+  ).map(({ item, left, width }) => ({ registro: item, left, width }));
+}
+
+/** Minutos desde la medianoche de `dia` hasta el instante `iso` — misma
+ * unidad que usan los registros (timeToMinutes), para compartir el resto de
+ * las cuentas de posición en la grilla. */
+function minutosEnDia(iso: string, dia: Date) {
+  const inicioDia = new Date(dia);
+  inicioDia.setHours(0, 0, 0, 0);
+  return Math.round((new Date(iso).getTime() - inicioDia.getTime()) / 60000);
+}
+
+function layoutEventosDia(items: EventoCalendarioItem[], dia: Date) {
+  return layoutIntervalos(
+    items,
+    (e) => minutosEnDia(e.inicio, dia),
+    (e) => minutosEnDia(e.fin, dia),
+  ).map(({ item, left, width }) => ({ evento: item, left, width }));
 }
 
 export function WeekCalendar({
@@ -62,6 +88,9 @@ export function WeekCalendar({
   vista,
   onVistaChange,
   horaInicioDefault = HORA_INICIO_DEFAULT,
+  eventosExternos,
+  mostrarCalendario = false,
+  onConvertirEvento,
 }: {
   dias: Date[];
   registros: RegistroTiempoItem[];
@@ -75,6 +104,13 @@ export function WeekCalendar({
   /** Hora en la que arranca la grilla por defecto (configurable) — igual se
    * expande hacia atrás si hay algún registro más temprano. */
   horaInicioDefault?: number;
+  /** Eventos de calendarios externos a superponer (de solo lectura). */
+  eventosExternos?: EventoCalendarioItem[];
+  /** Mientras está activo, los registros propios quedan atenuados de fondo
+   * para que los eventos superpuestos se destaquen. */
+  mostrarCalendario?: boolean;
+  /** Se dispara al apretar el botón "Cargar como registro" de un evento. */
+  onConvertirEvento?: (evento: EventoCalendarioItem) => void;
 }) {
   const [vistaAbierta, setVistaAbierta] = useState(false);
   const vistaRef = useRef<HTMLDivElement>(null);
@@ -297,7 +333,7 @@ export function WeekCalendar({
                         backgroundColor: `${color}33`,
                         borderLeft: `3px solid ${color}`,
                       }}
-                      className="absolute overflow-hidden rounded-r-md px-1.5 py-0.5 text-left text-[10px] leading-tight text-slate-800 hover:z-10 hover:ring-1 hover:ring-slate-400 dark:text-slate-100"
+                      className={`absolute overflow-hidden rounded-r-md px-1.5 py-0.5 text-left text-[10px] leading-tight text-slate-800 hover:z-20 hover:opacity-100 hover:ring-1 hover:ring-slate-400 dark:text-slate-100 ${mostrarCalendario ? "opacity-40" : ""}`}
                     >
                       <div className="truncate font-medium">
                         {registro.tarea && registro.tarea.id !== raiz?.id
@@ -308,6 +344,44 @@ export function WeekCalendar({
                     </button>
                   );
                 })}
+                {mostrarCalendario &&
+                  eventosExternos &&
+                  layoutEventosDia(
+                    eventosExternos.filter(
+                      (e) => toDateOnlyISO(new Date(e.inicio)) === toDateOnlyISO(dia),
+                    ),
+                    dia,
+                  ).map(({ evento, left, width }) => {
+                    const inicioMin = minutosEnDia(evento.inicio, dia);
+                    const finMin = minutosEnDia(evento.fin, dia);
+                    return (
+                      <div
+                        key={evento.uid}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        style={{
+                          top: topForMinutes(inicioMin),
+                          height: Math.max(((finMin - inicioMin) / 60) * HOUR_HEIGHT, 18),
+                          left: `calc(${left * ITEM_WIDTH_RATIO * 100}% + 2px)`,
+                          width: `calc(${width * ITEM_WIDTH_RATIO * 100}% - 4px)`,
+                          backgroundColor: `${evento.color}26`,
+                          borderColor: evento.color,
+                        }}
+                        className="absolute z-10 flex items-start gap-1 overflow-hidden rounded-md border border-dashed px-1.5 py-0.5 text-left text-[10px] leading-tight text-slate-800 hover:z-20 dark:text-slate-100"
+                      >
+                        <span className="min-w-0 flex-1 truncate font-medium">{evento.titulo}</span>
+                        {onConvertirEvento && (
+                          <button
+                            type="button"
+                            onClick={() => onConvertirEvento(evento)}
+                            title="Cargar como registro"
+                            className="shrink-0 text-slate-500 hover:text-[var(--accent-primary)] dark:text-slate-400"
+                          >
+                            <CalendarPlus size={11} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           );

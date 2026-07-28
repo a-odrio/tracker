@@ -100,3 +100,10 @@ export const planificacionSchema = z.object({
   fecha: z.string().min(1, "La fecha es obligatoria"),
   horasPlanificadas: z.number().nonnegative().optional().nullable(),
 });
+
+export const calendarioExternoSchema = z.object({
+  nombre: z.string().min(1, "El nombre es obligatorio"),
+  urlIcs: z.string().url("URL inválida"),
+  color: z.string().min(1, "Elegí un color"),
+  activo: z.boolean().optional(),
+});

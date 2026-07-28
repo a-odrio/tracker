@@ -72,6 +72,7 @@ export function TimeEntryForm({
     horaInicio?: string;
     horaFin?: string;
     tareaId?: number;
+    comentarios?: string;
   };
   onTareaCreated: (tarea: TareaItem) => void;
   onTipoCreated: (tipo: TipoTrabajoItem) => void;
@@ -119,7 +120,9 @@ export function TimeEntryForm({
   const [horaFin, setHoraFin] = useState(
     registro?.horaFin ?? valoresIniciales?.horaFin ?? "10:00",
   );
-  const [comentarios, setComentarios] = useState(registro?.comentarios ?? "");
+  const [comentarios, setComentarios] = useState(
+    registro?.comentarios ?? valoresIniciales?.comentarios ?? "",
+  );
   const [tareaEstadoId, setTareaEstadoId] = useState<number | "">(() =>
     estadoPorDefecto(tareas.find((t) => t.id === tareaId), estados),
   );

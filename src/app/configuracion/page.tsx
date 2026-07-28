@@ -6,9 +6,21 @@ import { TiposTrabajoConfig } from "@/components/config/tipos-trabajo-config";
 import { ColorPrincipalConfig } from "@/components/config/color-principal-config";
 import { AvisoTimerConfig } from "@/components/config/aviso-timer-config";
 import { GrillaRegistroConfig } from "@/components/config/grilla-registro-config";
+import { CalendariosConfig } from "@/components/config/calendarios-config";
 
 export default function ConfiguracionPage() {
-  const { estados, setEstados, tipos, setTipos, tema, setTema, loading, error } = useAppData();
+  const {
+    estados,
+    setEstados,
+    tipos,
+    setTipos,
+    tema,
+    setTema,
+    calendarios,
+    setCalendarios,
+    loading,
+    error,
+  } = useAppData();
 
   if (error) {
     return (
@@ -46,6 +58,7 @@ export default function ConfiguracionPage() {
         horaInicioGrilla={tema.horaInicioGrilla}
         onChange={(cambios) => setTema({ ...tema, ...cambios })}
       />
+      <CalendariosConfig calendarios={calendarios} onChange={setCalendarios} />
     </div>
   );
 }

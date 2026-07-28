@@ -1,0 +1,9 @@
+-- CreateTable
+CREATE TABLE "CalendarioExterno" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "nombre" TEXT NOT NULL,
+    "urlIcs" TEXT NOT NULL,
+    "color" TEXT NOT NULL DEFAULT '#64748b',
+    "activo" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

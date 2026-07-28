@@ -130,3 +130,15 @@ model PlanificacionSemana {
   horasPlanificadas Float?
   createdAt         DateTime @default(now())
 }
+
+/// Calendario externo (Google/Outlook/etc.) suscripto por URL de feed iCal —
+/// de solo lectura, se muestra superpuesto en la grilla de Registro. Se
+/// puede conectar más de uno.
+model CalendarioExterno {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  urlIcs    String
+  color     String   @default("#64748b")
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}

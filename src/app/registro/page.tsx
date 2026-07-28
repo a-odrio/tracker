@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { addDays } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { apiDelete, apiGet } from "@/lib/api-client";
-import type { RegistroTiempoItem } from "@/lib/types";
+import type { EventoCalendarioItem, RegistroTiempoItem } from "@/lib/types";
 import { clienteIdDe } from "@/lib/tarea-tree";
 import { useAppData } from "@/lib/app-data";
 import {
@@ -19,6 +19,7 @@ import { Button, ConfirmDialog, Modal, Select } from "@/components/ui";
 import { TimeEntryForm } from "@/components/timetracking/time-entry-form";
 import { TimerBar, type SeedRegistro } from "@/components/timetracking/timer-bar";
 import { WeekCalendar, type VistaCalendario } from "@/components/timetracking/week-calendar";
+import { CalendarioExternoForm } from "@/components/config/calendario-externo-form";
 
 export default function RegistroPage() {
   const {
@@ -29,6 +30,8 @@ export default function RegistroPage() {
     setTipos,
     estados,
     tema,
+    calendarios,
+    setCalendarios,
     loading: datosCargando,
     error: errorDatos,
   } = useAppData();
@@ -45,8 +48,13 @@ export default function RegistroPage() {
     horaInicio?: string;
     horaFin?: string;
     tareaId?: number;
+    comentarios?: string;
   } | null>(null);
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [mostrarCalendario, setMostrarCalendario] = useState(false);
+  const [mostrarAgregarCalendario, setMostrarAgregarCalendario] = useState(false);
+  const [calendarioSeleccionado, setCalendarioSeleccionado] = useState<number | "">("");
+  const [eventosExternos, setEventosExternos] = useState<EventoCalendarioItem[]>([]);
 
   const inicioSemana = (tema?.inicioSemana ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
   const dias = useMemo(() => {
@@ -88,6 +96,47 @@ export default function RegistroPage() {
     cargarSemana();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start.getTime(), end.getTime()]);
+
+  const calendariosActivos = calendarios.filter((c) => c.activo);
+
+  useEffect(() => {
+    if (!mostrarCalendario) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpia eventos al ocultar el calendario
+      setEventosExternos([]);
+      return;
+    }
+    const params = new URLSearchParams({
+      desde: toDateOnlyISO(start),
+      hasta: toDateOnlyISO(end),
+    });
+    if (calendarioSeleccionado) params.set("calendarioId", String(calendarioSeleccionado));
+    apiGet<EventoCalendarioItem[]>(`/api/calendarios/eventos?${params}`)
+      .then(setEventosExternos)
+      .catch(() => setEventosExternos([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on week/toggle/calendar change
+  }, [mostrarCalendario, calendarioSeleccionado, start.getTime(), end.getTime()]);
+
+  function onToggleCalendario() {
+    if (calendarios.length === 0) {
+      setMostrarAgregarCalendario(true);
+      return;
+    }
+    setMostrarCalendario((v) => !v);
+  }
+
+  function convertirEvento(evento: EventoCalendarioItem) {
+    const inicio = new Date(evento.inicio);
+    const fin = new Date(evento.fin);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setEditing(null);
+    setSeleccion({
+      fecha: toDateOnlyISO(inicio),
+      horaInicio: `${pad(inicio.getHours())}:${pad(inicio.getMinutes())}`,
+      horaFin: `${pad(fin.getHours())}:${pad(fin.getMinutes())}`,
+      comentarios: evento.titulo,
+    });
+    setShowForm(true);
+  }
 
   function abrirRegistroManual(seed: SeedRegistro) {
     setEditing(null);
@@ -197,7 +246,44 @@ export default function RegistroPage() {
           Total semana:{" "}
           <span className="font-medium">{totalHoras.toFixed(2)}h</span>
         </span>
+        <Button
+          variant={mostrarCalendario ? "primary" : "secondary"}
+          onClick={onToggleCalendario}
+        >
+          <CalendarDays size={14} /> Calendario
+        </Button>
+        {mostrarCalendario && calendariosActivos.length > 1 && (
+          <Select
+            className="w-40"
+            value={calendarioSeleccionado}
+            onChange={(e) =>
+              setCalendarioSeleccionado(e.target.value ? Number(e.target.value) : "")
+            }
+          >
+            <option value="">Todos</option>
+            {calendariosActivos.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </Select>
+        )}
       </div>
+
+      <Modal
+        open={mostrarAgregarCalendario}
+        onClose={() => setMostrarAgregarCalendario(false)}
+        title="Nuevo calendario externo"
+      >
+        <CalendarioExternoForm
+          onSaved={(calendario) => {
+            setCalendarios((prev) => [...prev, calendario]);
+            setMostrarAgregarCalendario(false);
+            setMostrarCalendario(true);
+          }}
+          onCancel={() => setMostrarAgregarCalendario(false)}
+        />
+      </Modal>
 
       {tema && (
         <Modal
@@ -277,6 +363,9 @@ export default function RegistroPage() {
             vista={vista}
             onVistaChange={setVista}
             horaInicioDefault={tema?.horaInicioGrilla}
+            eventosExternos={eventosExternos}
+            mostrarCalendario={mostrarCalendario}
+            onConvertirEvento={convertirEvento}
             onEdit={(registro) => {
               setEditing(registro);
               setSeleccion(null);

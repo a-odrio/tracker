@@ -12,6 +12,7 @@ import {
 } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api-client";
 import type {
+  CalendarioExternoItem,
   ClienteItem,
   EstadoItem,
   RegistroTiempoItem,
@@ -71,6 +72,9 @@ type AppData = {
    * derivan de RegistroTiempo, no de un cache aparte. */
   recientes: RegistroTiempoItem[];
   refrescarRecientes: () => Promise<void>;
+  /** Calendarios externos (feeds ICS) conectados — de solo lectura. */
+  calendarios: CalendarioExternoItem[];
+  setCalendarios: Dispatch<SetStateAction<CalendarioExternoItem[]>>;
 };
 
 const AppDataContext = createContext<AppData | null>(null);
@@ -95,6 +99,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [timer, setTimer] = useState<TimerActivoItem | null>(null);
   const [timerLoading, setTimerLoading] = useState(true);
   const [recientes, setRecientes] = useState<RegistroTiempoItem[]>([]);
+  const [calendarios, setCalendarios] = useState<CalendarioExternoItem[]>([]);
 
   useEffect(() => {
     apiGet<TimerActivoItem | null>("/api/timer")
@@ -115,13 +120,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       apiGet<EstadoItem[]>("/api/estados"),
       apiGet<TipoTrabajoItem[]>("/api/tipos-trabajo?incluirInactivos=true"),
       apiGet<TemaItem>("/api/tema"),
+      apiGet<CalendarioExternoItem[]>("/api/calendarios"),
     ])
-      .then(([c, t, e, ti, tm]) => {
+      .then(([c, t, e, ti, tm, cal]) => {
         setClientes(c);
         setTareas(t);
         setEstados(e);
         setTipos(ti);
         setTema(tm);
+        setCalendarios(cal);
         setLoading(false);
       })
       .catch((e) => {
@@ -214,6 +221,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         descartarTimer,
         recientes,
         refrescarRecientes,
+        calendarios,
+        setCalendarios,
       }}
     >
       {children}
