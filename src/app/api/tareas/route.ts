@@ -4,7 +4,7 @@ import { tareaSchema } from "@/lib/validation";
 import type { Prisma } from "@/generated/prisma/client";
 import type { Prioridad } from "@/generated/prisma/enums";
 
-const include = { cliente: true, parent: true, estado: true } as const;
+const include = { cliente: true, parent: true, estado: true, tipoTrabajo: true } as const;
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;

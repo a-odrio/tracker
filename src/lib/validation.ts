@@ -56,8 +56,10 @@ const tareaBase = z.object({
   recurrente: z.boolean().optional(),
   recurrenciaFrecuencia: frecuenciaEnum.optional().nullable(),
   recurrenciaIntervalo: z.number().int().positive().optional().nullable(),
+  recurrenciaFecha: z.string().optional().nullable(),
   nombreBase: z.string().optional().nullable(),
   serieId: z.number().int().optional().nullable(),
+  tipoTrabajoId: z.number().int().optional().nullable(),
 });
 
 export const tareaSchema = tareaBase.refine(

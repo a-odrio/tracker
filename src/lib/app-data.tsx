@@ -178,7 +178,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       recurrente: true,
       recurrenciaFrecuencia: cerrada.recurrenciaFrecuencia,
       recurrenciaIntervalo: intervalo,
+      recurrenciaFecha: fechaSiguiente.toISOString(),
       serieId: cerrada.serieId ?? cerrada.id,
+      tipoTrabajoId: cerrada.tipoTrabajoId,
     };
     const payload =
       cerrada.parentId == null

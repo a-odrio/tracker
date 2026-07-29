@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { tareaUpdateSchema } from "@/lib/validation";
 
-const include = { cliente: true, parent: true, estado: true } as const;
+const include = { cliente: true, parent: true, estado: true, tipoTrabajo: true } as const;
 
 /** true si `candidatoId` es `raizId` mismo o está anidado en cualquier
  * profundidad debajo de él — usado para bloquear reparenting cíclico. */

@@ -59,19 +59,27 @@ export interface TareaItem {
   imprevista: boolean;
   orden: number;
   ordenEstado: number;
+  createdAt: string;
   /** Si está tildado, al cerrarse (estado esFinal) se crea automáticamente
    * la siguiente instancia con el período recalculado. */
   recurrente: boolean;
   recurrenciaFrecuencia: Frecuencia | null;
   /** Cada cuántas semanas/meses se repite. */
   recurrenciaIntervalo: number | null;
+  /** Ancla el período reflejado en el nombre de esta instancia (no
+   * necesariamente cuándo se creó). */
+  recurrenciaFecha: string | null;
   /** Nombre sin el período — el que se edita en el form cuando es recurrente. */
   nombreBase: string | null;
   /** Apunta a la primera tarea de la cadena de instancias recurrentes. */
   serieId: number | null;
+  /** Tipo de trabajo que se preselecciona al registrar tiempo contra esta
+   * tarea. Null = sin preferencia, el registro usa su selección habitual. */
+  tipoTrabajoId: number | null;
   cliente?: ClienteItem | null;
   parent?: TareaItem | null;
   estado?: EstadoItem;
+  tipoTrabajo?: TipoTrabajoItem | null;
 }
 
 export interface RegistroTiempoItem {

@@ -72,6 +72,7 @@ export function TimeEntryForm({
     horaInicio?: string;
     horaFin?: string;
     tareaId?: number;
+    tipoTrabajoId?: number;
     comentarios?: string;
   };
   onTareaCreated: (tarea: TareaItem) => void;
@@ -112,7 +113,11 @@ export function TimeEntryForm({
       onProyectoCambiado: cambiarTarea,
     });
   const [tipoTrabajoId, setTipoTrabajoId] = useState(
-    registro?.tipoTrabajoId ?? tipos[0]?.id ?? 0,
+    registro?.tipoTrabajoId ??
+      valoresIniciales?.tipoTrabajoId ??
+      tareaSeedInicial?.tipoTrabajoId ??
+      tipos[0]?.id ??
+      0,
   );
   const [horaInicio, setHoraInicio] = useState(
     registro?.horaInicio ?? valoresIniciales?.horaInicio ?? "09:00",
@@ -131,7 +136,9 @@ export function TimeEntryForm({
 
   function cambiarTarea(id: number) {
     setTareaId(id);
-    setTareaEstadoId(estadoPorDefecto(tareas.find((t) => t.id === id), estados));
+    const tarea = tareas.find((t) => t.id === id);
+    setTareaEstadoId(estadoPorDefecto(tarea, estados));
+    if (tarea?.tipoTrabajoId) setTipoTrabajoId(tarea.tipoTrabajoId);
   }
 
   const solapa = useMemo(() => {

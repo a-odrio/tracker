@@ -53,6 +53,7 @@ model TipoTrabajo {
   activo    Boolean          @default(true)
   registros RegistroTiempo[]
   timers    TimerActivo[]
+  tareas    Tarea[]
 }
 
 model Cliente {
@@ -91,6 +92,11 @@ model Tarea {
   estado         Estado                @relation(fields: [estadoId], references: [id])
   horasEstimadas Float?
   imprevista     Boolean               @default(false)
+  /// Tipo de trabajo que se preselecciona al registrar tiempo contra esta
+  /// tarea. Opcional: en blanco, el registro de trabajo usa su selección
+  /// habitual sin forzar nada.
+  tipoTrabajoId  Int?
+  tipoTrabajo    TipoTrabajo?          @relation(fields: [tipoTrabajoId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   /// Orden entre hermanos: por parentId, o por clienteId si es raíz.
   orden          Int                   @default(0)
   /// Orden dentro de una columna de Kanban / grupo por estado (por estadoId).
@@ -103,6 +109,10 @@ model Tarea {
   recurrenciaFrecuencia  Frecuencia?
   /// Cada cuántas semanas/meses (según recurrenciaFrecuencia) se repite. Default 1.
   recurrenciaIntervalo   Int?
+  /// Fecha que ancla el período reflejado en el nombre de ESTA instancia
+  /// (no necesariamente cuándo se creó: una instancia futura creada hoy
+  /// ancla a su período, no a hoy). Editar otros campos no la recalcula.
+  recurrenciaFecha       DateTime?
   /// Nombre sin el período ("Reunión de seguimiento"), usado para armar el
   /// `nombre` de cada instancia nueva ("Reunión de seguimiento — Semana del ...").
   nombreBase             String?

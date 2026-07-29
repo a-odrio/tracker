@@ -15,6 +15,7 @@ import { apiPatch, apiPost } from "@/lib/api-client";
 import type { ClienteItem, EstadoItem, Frecuencia, Prioridad, TareaItem } from "@/lib/types";
 import { ancestros, hijosDirectos } from "@/lib/tarea-tree";
 import { nombreConPeriodo } from "@/lib/recurrencia";
+import { useAppData } from "@/lib/app-data";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
 import { ColorSwatchPicker } from "@/components/config/color-swatch-picker";
 import { SortableRow } from "@/components/config/sortable-row";
@@ -155,6 +156,15 @@ function TaskFormInner({
   const [intervalo, setIntervalo] = useState(
     tarea?.recurrenciaIntervalo?.toString() ?? "1",
   );
+  // El período del nombre queda anclado a recurrenciaFecha de la instancia
+  // que ya era recurrente (no a "hoy"): si no, guardar cualquier otro
+  // cambio en una instancia recurrente vieja le cambiaría el período
+  // silenciosamente. Una tarea nueva, o una que recién se vuelve
+  // recurrente, ancla a hoy.
+  const fechaPeriodo =
+    tarea?.recurrente ? new Date(tarea.recurrenciaFecha ?? tarea.createdAt) : new Date();
+  const { tiposActivos } = useAppData();
+  const [tipoTrabajoId, setTipoTrabajoId] = useState<number | "">(tarea?.tipoTrabajoId ?? "");
   const estadosOrdenados = [...estados].sort((a, b) => a.orden - b.orden);
   const [estadoId, setEstadoId] = useState(
     tarea?.estadoId ?? estados.find((e) => e.esInicial)?.id ?? estados[0]?.id ?? 0,
@@ -212,13 +222,15 @@ function TaskFormInner({
     setError("");
     setSaving(true);
     try {
-      const nombreFinal = recurrente ? nombreConPeriodo(nombre, frecuencia, new Date()) : nombre;
+      const nombreFinal = recurrente ? nombreConPeriodo(nombre, frecuencia, fechaPeriodo) : nombre;
       const camposRecurrencia = {
         nombre: nombreFinal,
         nombreBase: recurrente ? nombre : null,
         recurrente,
         recurrenciaFrecuencia: recurrente ? frecuencia : null,
         recurrenciaIntervalo: recurrente ? Number(intervalo) || 1 : null,
+        recurrenciaFecha: recurrente ? fechaPeriodo.toISOString() : null,
+        tipoTrabajoId: tipoTrabajoId ? Number(tipoTrabajoId) : null,
       };
       const payload: Record<string, unknown> = esRaiz
         ? {
@@ -248,6 +260,7 @@ function TaskFormInner({
         setHorasEstimadas("");
         setRecurrente(false);
         setIntervalo("1");
+        setTipoTrabajoId("");
       }
     } catch (e) {
       setError((e as Error).message);
@@ -339,11 +352,26 @@ function TaskFormInner({
               <p className="col-span-2 text-xs text-slate-500 dark:text-slate-400">
                 Se va a llamar:{" "}
                 <span className="font-medium">
-                  {nombre ? nombreConPeriodo(nombre, frecuencia, new Date()) : "…"}
+                  {nombre ? nombreConPeriodo(nombre, frecuencia, fechaPeriodo) : "…"}
                 </span>
               </p>
             </div>
           )}
+        </div>
+
+        <div>
+          <Label>Tipo de trabajo</Label>
+          <Select
+            value={tipoTrabajoId}
+            onChange={(e) => setTipoTrabajoId(e.target.value ? Number(e.target.value) : "")}
+          >
+            <option value="">Sin definir</option>
+            {tiposActivos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </Select>
         </div>
 
         {esRaiz ? (

@@ -90,6 +90,16 @@ export function TimerBar({
   const proyectoIdInicial =
     tareas.find((t) => t.parentId === null && t.clienteId === clienteIdInicial)?.id ?? 0;
   const [tareaId, setTareaId] = useState<number>(proyectoIdInicial);
+  const [tipoTrabajoId, setTipoTrabajoId] = useState(
+    tareas.find((t) => t.id === proyectoIdInicial)?.tipoTrabajoId ?? tipos[0]?.id ?? 0,
+  );
+
+  function cambiarTarea(id: number) {
+    setTareaId(id);
+    const tarea = tareas.find((t) => t.id === id);
+    if (tarea?.tipoTrabajoId) setTipoTrabajoId(tarea.tipoTrabajoId);
+  }
+
   const {
     clienteId,
     setClienteId,
@@ -102,9 +112,8 @@ export function TimerBar({
     clientes,
     tareas,
     clienteInicial,
-    onProyectoCambiado: setTareaId,
+    onProyectoCambiado: cambiarTarea,
   });
-  const [tipoTrabajoId, setTipoTrabajoId] = useState(tipos[0]?.id ?? 0);
 
   useEffect(() => {
     if (!timer) return;
@@ -297,7 +306,7 @@ export function TimerBar({
             tareas={tareas}
             estados={estados}
             tareaId={tareaId}
-            onSeleccionar={setTareaId}
+            onSeleccionar={cambiarTarea}
             onTareaCreated={onTareaCreated}
             className="w-40"
           />
@@ -391,7 +400,7 @@ export function TimerBar({
             tareas={tareas}
             estados={estados}
             tareaId={tareaId}
-            onSeleccionar={setTareaId}
+            onSeleccionar={cambiarTarea}
             onTareaCreated={onTareaCreated}
             className="w-48"
           />
