@@ -349,7 +349,7 @@ export function TimerBar({
   );
 
   const filaInline = (
-    <div className="flex flex-nowrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
       <Select
         title="Cliente"
         className="w-44 shrink-0"
