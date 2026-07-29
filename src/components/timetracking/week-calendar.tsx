@@ -312,7 +312,7 @@ export function WeekCalendar({
                         4,
                       ),
                     }}
-                    className="pointer-events-none absolute inset-x-1 z-10 overflow-hidden rounded-md border-2 border-dashed border-[var(--accent-primary)] bg-[var(--accent-primary)]/20 px-1.5 py-0.5 text-[10px] font-medium text-slate-900 dark:text-slate-100"
+                    className="pointer-events-none absolute inset-x-1 z-10 overflow-hidden rounded-md border-2 border-dashed border-[var(--accent-primary)] bg-[var(--accent-primary)]/20 px-1.5 py-0.5 text-[10px] font-medium text-slate-900 dark:bg-[var(--accent-primary)]/40 dark:text-slate-100 dark:ring-1 dark:ring-white/30"
                   >
                     {minutesToTime(Math.min(dragPreview.startMin, dragPreview.currentMin))}–
                     {minutesToTime(Math.max(dragPreview.startMin, dragPreview.currentMin))}

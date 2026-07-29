@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { addDays } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { apiDelete, apiGet } from "@/lib/api-client";
 import type { EventoCalendarioItem, RegistroTiempoItem } from "@/lib/types";
 import { clienteIdDe } from "@/lib/tarea-tree";
@@ -116,12 +116,12 @@ export default function RegistroPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on week/toggle/calendar change
   }, [mostrarCalendario, calendarioSeleccionado, start.getTime(), end.getTime()]);
 
-  function onToggleCalendario() {
+  function mostrarCalendarioClick() {
     if (calendarios.length === 0) {
       setMostrarAgregarCalendario(true);
       return;
     }
-    setMostrarCalendario((v) => !v);
+    setMostrarCalendario(true);
   }
 
   function convertirEvento(evento: EventoCalendarioItem) {
@@ -246,27 +246,43 @@ export default function RegistroPage() {
           Total semana:{" "}
           <span className="font-medium">{totalHoras.toFixed(2)}h</span>
         </span>
-        <Button
-          variant={mostrarCalendario ? "primary" : "secondary"}
-          onClick={onToggleCalendario}
-        >
-          <CalendarDays size={14} /> Calendario
-        </Button>
-        {mostrarCalendario && calendariosActivos.length > 1 && (
-          <Select
-            className="w-40"
-            value={calendarioSeleccionado}
-            onChange={(e) =>
-              setCalendarioSeleccionado(e.target.value ? Number(e.target.value) : "")
-            }
-          >
-            <option value="">Todos</option>
-            {calendariosActivos.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </Select>
+        {mostrarCalendario ? (
+          <div className="flex items-center gap-2">
+            <Select
+              className="w-40"
+              value={calendarioSeleccionado}
+              onChange={(e) =>
+                setCalendarioSeleccionado(e.target.value ? Number(e.target.value) : "")
+              }
+            >
+              <option value="">Todos</option>
+              {calendariosActivos.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </Select>
+            <Button
+              variant="secondary"
+              title="Agregar calendario"
+              className="px-2"
+              onClick={() => setMostrarAgregarCalendario(true)}
+            >
+              <Plus size={14} />
+            </Button>
+            <Button
+              variant="secondary"
+              title="Ocultar calendario"
+              className="px-2"
+              onClick={() => setMostrarCalendario(false)}
+            >
+              <X size={14} />
+            </Button>
+          </div>
+        ) : (
+          <Button variant="secondary" onClick={mostrarCalendarioClick}>
+            <CalendarDays size={14} /> Calendario
+          </Button>
         )}
       </div>
 
