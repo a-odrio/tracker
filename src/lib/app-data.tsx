@@ -37,6 +37,9 @@ type AppData = {
   tiposActivos: TipoTrabajoItem[];
   tema: TemaItem | null;
   loading: boolean;
+  /** Fracción (0 a 1) de los pedidos iniciales que ya resolvieron — para
+   * mostrar un indicador de avance real en el splash de carga. */
+  loadingProgress: number;
   error: string;
   setClientes: Dispatch<SetStateAction<ClienteItem[]>>;
   setTareas: Dispatch<SetStateAction<TareaItem[]>>;
@@ -99,6 +102,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [tipos, setTipos] = useState<TipoTrabajoItem[]>([]);
   const [tema, setTema] = useState<TemaItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pedidosCompletados, setPedidosCompletados] = useState(0);
   const [error, setError] = useState("");
   const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
   const [instanciaRecurrenteCreada, setInstanciaRecurrenteCreada] = useState<TareaItem | null>(
@@ -122,13 +126,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Cada pedido suma su propio progreso al resolver (no solo cuando
+    // termina el lote entero), para que el splash de carga pueda mostrar un
+    // avance real en vez de saltar de 0 a 100.
+    function conProgreso<T>(promesa: Promise<T>): Promise<T> {
+      return promesa.then((v) => {
+        setPedidosCompletados((c) => c + 1);
+        return v;
+      });
+    }
     Promise.all([
-      apiGet<ClienteItem[]>("/api/clientes?incluirArchivados=true"),
-      apiGet<TareaItem[]>("/api/tareas"),
-      apiGet<EstadoItem[]>("/api/estados"),
-      apiGet<TipoTrabajoItem[]>("/api/tipos-trabajo?incluirInactivos=true"),
-      apiGet<TemaItem>("/api/tema"),
-      apiGet<CalendarioExternoItem[]>("/api/calendarios"),
+      conProgreso(apiGet<ClienteItem[]>("/api/clientes?incluirArchivados=true")),
+      conProgreso(apiGet<TareaItem[]>("/api/tareas")),
+      conProgreso(apiGet<EstadoItem[]>("/api/estados")),
+      conProgreso(apiGet<TipoTrabajoItem[]>("/api/tipos-trabajo?incluirInactivos=true")),
+      conProgreso(apiGet<TemaItem>("/api/tema")),
+      conProgreso(apiGet<CalendarioExternoItem[]>("/api/calendarios")),
     ])
       .then(([c, t, e, ti, tm, cal]) => {
         setClientes(c);
@@ -144,6 +157,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       });
   }, []);
+
+  const PEDIDOS_INICIALES = 6;
+  const loadingProgress = Math.min(pedidosCompletados / PEDIDOS_INICIALES, 1);
 
   const clientesActivos = useMemo(() => clientes.filter((c) => c.activo), [clientes]);
   const tiposActivos = useMemo(() => tipos.filter((t) => t.activo), [tipos]);
@@ -266,6 +282,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         tiposActivos,
         tema,
         loading,
+        loadingProgress,
         error,
         setClientes,
         setTareas,
