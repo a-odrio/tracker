@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const prioridadEnum = z.enum(["URGENTE", "ALTA", "MEDIA", "BAJA"]);
 
+export const frecuenciaEnum = z.enum(["SEMANAL", "MENSUAL"]);
+
 export const clienteSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio"),
   descripcion: z.string().optional().nullable(),
@@ -51,6 +53,11 @@ const tareaBase = z.object({
   imprevista: z.boolean().optional(),
   orden: z.number().int().optional(),
   ordenEstado: z.number().int().optional(),
+  recurrente: z.boolean().optional(),
+  recurrenciaFrecuencia: frecuenciaEnum.optional().nullable(),
+  recurrenciaIntervalo: z.number().int().positive().optional().nullable(),
+  nombreBase: z.string().optional().nullable(),
+  serieId: z.number().int().optional().nullable(),
 });
 
 export const tareaSchema = tareaBase.refine(

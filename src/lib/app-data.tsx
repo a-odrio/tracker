@@ -22,6 +22,7 @@ import type {
   TipoTrabajoItem,
 } from "@/lib/types";
 import { padreRecienCerrado } from "@/lib/tarea-tree";
+import { nombreConPeriodo, siguientePeriodo } from "@/lib/recurrencia";
 
 type AppData = {
   /** Todos los clientes, incluidos archivados — usar `clientesActivos` donde
@@ -57,6 +58,10 @@ type AppData = {
   dismissPadreParaCerrar: () => void;
   /** Lleva `padreParaCerrar` al estado `esFinal` fijo y limpia el aviso. */
   finalizarPadre: () => Promise<void>;
+  /** Instancia nueva creada automáticamente porque una tarea recurrente se
+   * cerró — null si no hay ningún aviso pendiente. */
+  instanciaRecurrenteCreada: TareaItem | null;
+  dismissInstanciaRecurrenteCreada: () => void;
   /** Timer activo, compartido para que cualquier pantalla/widget que pueda
    * iniciar uno (TimerBar, accesos directos de /registro) vea el mismo
    * estado sin desfasarse entre sí. */
@@ -96,6 +101,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [padreParaCerrar, setPadreParaCerrar] = useState<TareaItem | null>(null);
+  const [instanciaRecurrenteCreada, setInstanciaRecurrenteCreada] = useState<TareaItem | null>(
+    null,
+  );
   const [timer, setTimer] = useState<TimerActivoItem | null>(null);
   const [timerLoading, setTimerLoading] = useState(true);
   const [recientes, setRecientes] = useState<RegistroTiempoItem[]>([]);
@@ -140,6 +148,52 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const clientesActivos = useMemo(() => clientes.filter((c) => c.activo), [clientes]);
   const tiposActivos = useMemo(() => tipos.filter((t) => t.activo), [tipos]);
 
+  /** Si `id` pasó de un estado no-final a uno esFinal entre `antes` y
+   * `despues`, devuelve la tarea ya cerrada — para disparar la creación de
+   * la siguiente instancia si es recurrente. */
+  function tareaRecienCerrada(
+    id: number,
+    antes: TareaItem[],
+    despues: TareaItem[],
+  ): TareaItem | null {
+    const a = antes.find((t) => t.id === id);
+    const d = despues.find((t) => t.id === id);
+    if (!a || !d) return null;
+    return !a.estado?.esFinal && d.estado?.esFinal ? d : null;
+  }
+
+  /** Crea la siguiente instancia de una tarea recurrente recién cerrada: mismo
+   * cliente/padre/config, estado inicial, nombre con el período siguiente. */
+  async function crearSiguienteInstancia(cerrada: TareaItem) {
+    if (!cerrada.recurrente || !cerrada.recurrenciaFrecuencia || !cerrada.nombreBase) return;
+    const estadoInicial = estados.find((e) => e.esInicial);
+    if (!estadoInicial) return;
+    const intervalo = cerrada.recurrenciaIntervalo ?? 1;
+    const fechaSiguiente = siguientePeriodo(cerrada.recurrenciaFrecuencia, intervalo, new Date());
+    const nombre = nombreConPeriodo(cerrada.nombreBase, cerrada.recurrenciaFrecuencia, fechaSiguiente);
+    const camposComunes = {
+      nombre,
+      nombreBase: cerrada.nombreBase,
+      estadoId: estadoInicial.id,
+      recurrente: true,
+      recurrenciaFrecuencia: cerrada.recurrenciaFrecuencia,
+      recurrenciaIntervalo: intervalo,
+      serieId: cerrada.serieId ?? cerrada.id,
+    };
+    const payload =
+      cerrada.parentId == null
+        ? { ...camposComunes, parentId: null, clienteId: cerrada.clienteId, color: cerrada.color }
+        : {
+            ...camposComunes,
+            parentId: cerrada.parentId,
+            prioridad: cerrada.prioridad,
+            horasEstimadas: cerrada.horasEstimadas,
+          };
+    const nueva = await apiPost<TareaItem>("/api/tareas", payload);
+    setTareas((prev) => [...prev, nueva]);
+    setInstanciaRecurrenteCreada(nueva);
+  }
+
   function sincronizarTareas(nuevas: TareaItem[], idsAfectados: number[]) {
     const antes = tareas;
     setTareas(nuevas);
@@ -149,6 +203,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setPadreParaCerrar(padre);
         break;
       }
+    }
+    for (const id of idsAfectados) {
+      const cerrada = tareaRecienCerrada(id, antes, nuevas);
+      if (cerrada) crearSiguienteInstancia(cerrada);
     }
   }
 
@@ -162,11 +220,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!padreParaCerrar) return;
     const estadoFinal = estados.find((e) => e.esFinal);
     if (!estadoFinal) return;
+    const antes = tareas;
     const actualizado = await apiPatch<TareaItem>(`/api/tareas/${padreParaCerrar.id}`, {
       estadoId: estadoFinal.id,
     });
     setTareas((prev) => prev.map((t) => (t.id === actualizado.id ? actualizado : t)));
     setPadreParaCerrar(null);
+    const cerrada = tareaRecienCerrada(actualizado.id, antes, [actualizado]);
+    if (cerrada) crearSiguienteInstancia(cerrada);
   }
 
   async function refrescarRecientes() {
@@ -214,6 +275,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         padreParaCerrar,
         dismissPadreParaCerrar: () => setPadreParaCerrar(null),
         finalizarPadre,
+        instanciaRecurrenteCreada,
+        dismissInstanciaRecurrenteCreada: () => setInstanciaRecurrenteCreada(null),
         timer,
         timerLoading,
         iniciarTimer,

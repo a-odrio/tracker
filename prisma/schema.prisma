@@ -16,6 +16,11 @@ enum Prioridad {
   BAJA
 }
 
+enum Frecuencia {
+  SEMANAL
+  MENSUAL
+}
+
 model Tema {
   id               Int    @id @default(autoincrement())
   colorPrincipal   String @default("#3b82f6")
@@ -91,6 +96,22 @@ model Tarea {
   /// Orden dentro de una columna de Kanban / grupo por estado (por estadoId).
   ordenEstado    Int                   @default(0)
   createdAt      DateTime              @default(now())
+
+  /// Si está tildado, al cerrarse (llegar a un estado esFinal) se crea
+  /// automáticamente la siguiente instancia con el período recalculado.
+  recurrente             Boolean     @default(false)
+  recurrenciaFrecuencia  Frecuencia?
+  /// Cada cuántas semanas/meses (según recurrenciaFrecuencia) se repite. Default 1.
+  recurrenciaIntervalo   Int?
+  /// Nombre sin el período ("Reunión de seguimiento"), usado para armar el
+  /// `nombre` de cada instancia nueva ("Reunión de seguimiento — Semana del ...").
+  nombreBase             String?
+  /// Apunta a la primera tarea de la cadena de instancias recurrentes — para
+  /// poder reconstruir el historial completo de una serie. No se usa aún en
+  /// ninguna pantalla.
+  serieId                Int?
+  serie                  Tarea?      @relation("TareaSerie", fields: [serieId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  instanciasDeLaSerie    Tarea[]     @relation("TareaSerie")
 
   registros      RegistroTiempo[]
   planificacion  PlanificacionSemana[]

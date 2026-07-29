@@ -1,5 +1,7 @@
 export type Prioridad = "URGENTE" | "ALTA" | "MEDIA" | "BAJA";
 
+export type Frecuencia = "SEMANAL" | "MENSUAL";
+
 export interface TemaItem {
   id: number;
   colorPrincipal: string;
@@ -57,6 +59,16 @@ export interface TareaItem {
   imprevista: boolean;
   orden: number;
   ordenEstado: number;
+  /** Si está tildado, al cerrarse (estado esFinal) se crea automáticamente
+   * la siguiente instancia con el período recalculado. */
+  recurrente: boolean;
+  recurrenciaFrecuencia: Frecuencia | null;
+  /** Cada cuántas semanas/meses se repite. */
+  recurrenciaIntervalo: number | null;
+  /** Nombre sin el período — el que se edita en el form cuando es recurrente. */
+  nombreBase: string | null;
+  /** Apunta a la primera tarea de la cadena de instancias recurrentes. */
+  serieId: number | null;
   cliente?: ClienteItem | null;
   parent?: TareaItem | null;
   estado?: EstadoItem;

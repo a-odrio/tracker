@@ -12,14 +12,16 @@ import {
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
 import { apiPatch, apiPost } from "@/lib/api-client";
-import type { ClienteItem, EstadoItem, Prioridad, TareaItem } from "@/lib/types";
+import type { ClienteItem, EstadoItem, Frecuencia, Prioridad, TareaItem } from "@/lib/types";
 import { ancestros, hijosDirectos } from "@/lib/tarea-tree";
+import { nombreConPeriodo } from "@/lib/recurrencia";
 import { PRIORIDAD_LABEL } from "@/lib/utils";
 import { ColorSwatchPicker } from "@/components/config/color-swatch-picker";
 import { SortableRow } from "@/components/config/sortable-row";
 import { Button, ErrorText, Input, Label, Select, Textarea } from "@/components/ui";
 
 const PRIORIDADES: Prioridad[] = ["URGENTE", "ALTA", "MEDIA", "BAJA"];
+const FRECUENCIA_LABEL: Record<Frecuencia, string> = { SEMANAL: "Semanal", MENSUAL: "Mensual" };
 
 type Sujeto = { tarea?: TareaItem; parentId?: number | null };
 
@@ -142,8 +144,17 @@ function TaskFormInner({
   const parentIdFijo = tarea ? tarea.parentId : parentId === undefined ? undefined : parentId;
   const mostrarCascadaPadre = !esRaiz && !tarea && parentIdFijo === undefined;
 
-  const [nombre, setNombre] = useState(tarea?.nombre ?? "");
+  const [nombre, setNombre] = useState(
+    tarea?.recurrente ? (tarea.nombreBase ?? tarea.nombre) : (tarea?.nombre ?? ""),
+  );
   const [descripcion, setDescripcion] = useState(tarea?.descripcion ?? "");
+  const [recurrente, setRecurrente] = useState(tarea?.recurrente ?? false);
+  const [frecuencia, setFrecuencia] = useState<Frecuencia>(
+    tarea?.recurrenciaFrecuencia ?? "SEMANAL",
+  );
+  const [intervalo, setIntervalo] = useState(
+    tarea?.recurrenciaIntervalo?.toString() ?? "1",
+  );
   const estadosOrdenados = [...estados].sort((a, b) => a.orden - b.orden);
   const [estadoId, setEstadoId] = useState(
     tarea?.estadoId ?? estados.find((e) => e.esInicial)?.id ?? estados[0]?.id ?? 0,
@@ -201,9 +212,17 @@ function TaskFormInner({
     setError("");
     setSaving(true);
     try {
+      const nombreFinal = recurrente ? nombreConPeriodo(nombre, frecuencia, new Date()) : nombre;
+      const camposRecurrencia = {
+        nombre: nombreFinal,
+        nombreBase: recurrente ? nombre : null,
+        recurrente,
+        recurrenciaFrecuencia: recurrente ? frecuencia : null,
+        recurrenciaIntervalo: recurrente ? Number(intervalo) || 1 : null,
+      };
       const payload: Record<string, unknown> = esRaiz
         ? {
-            nombre,
+            ...camposRecurrencia,
             descripcion: descripcion || null,
             clienteId: Number(clienteIdRaizFinal),
             color,
@@ -211,7 +230,7 @@ function TaskFormInner({
             ...(!tarea && { parentId: null }),
           }
         : {
-            nombre,
+            ...camposRecurrencia,
             descripcion: descripcion || null,
             prioridad,
             estadoId: Number(estadoId),
@@ -227,6 +246,8 @@ function TaskFormInner({
         setNombre("");
         setDescripcion("");
         setHorasEstimadas("");
+        setRecurrente(false);
+        setIntervalo("1");
       }
     } catch (e) {
       setError((e as Error).message);
@@ -272,6 +293,57 @@ function TaskFormInner({
             value={descripcion ?? ""}
             onChange={(e) => setDescripcion(e.target.value)}
           />
+        </div>
+
+        <div className="col-span-2 space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <input
+              id="recurrente"
+              type="checkbox"
+              checked={recurrente}
+              onChange={(e) => setRecurrente(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-[var(--accent-primary)] dark:border-slate-700"
+            />
+            <label
+              htmlFor="recurrente"
+              className="text-sm text-slate-700 dark:text-slate-300"
+            >
+              Recurrente
+            </label>
+          </div>
+          {recurrente && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Frecuencia</Label>
+                <Select
+                  value={frecuencia}
+                  onChange={(e) => setFrecuencia(e.target.value as Frecuencia)}
+                >
+                  {(Object.keys(FRECUENCIA_LABEL) as Frecuencia[]).map((f) => (
+                    <option key={f} value={f}>
+                      {FRECUENCIA_LABEL[f]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label>Cada</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={intervalo}
+                  onChange={(e) => setIntervalo(e.target.value)}
+                />
+              </div>
+              <p className="col-span-2 text-xs text-slate-500 dark:text-slate-400">
+                Se va a llamar:{" "}
+                <span className="font-medium">
+                  {nombre ? nombreConPeriodo(nombre, frecuencia, new Date()) : "…"}
+                </span>
+              </p>
+            </div>
+          )}
         </div>
 
         {esRaiz ? (

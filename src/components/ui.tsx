@@ -100,19 +100,23 @@ export function InlineBanner({
   onDismiss,
 }: {
   text: string;
-  actionLabel: string;
-  onAction: () => void;
+  /** Omitir junto con `onAction` para un aviso puramente informativo, sin
+   * acción principal (ej: "se creó la siguiente instancia"). */
+  actionLabel?: string;
+  onAction?: () => void;
   onDismiss: () => void;
 }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
       <span className="flex-1">{text}</span>
-      <button
-        onClick={onAction}
-        className="shrink-0 font-medium underline decoration-amber-400 underline-offset-2 hover:decoration-2"
-      >
-        {actionLabel}
-      </button>
+      {actionLabel && onAction && (
+        <button
+          onClick={onAction}
+          className="shrink-0 font-medium underline decoration-amber-400 underline-offset-2 hover:decoration-2"
+        >
+          {actionLabel}
+        </button>
+      )}
       <button
         onClick={onDismiss}
         title="Descartar"

@@ -6,6 +6,7 @@ import { AccentProvider } from "@/components/accent-provider";
 import { Sidebar } from "@/components/sidebar";
 import { GlobalTimerWidget } from "@/components/timetracking/global-timer-widget";
 import { PadreParaCerrarBanner } from "@/components/padre-para-cerrar-banner";
+import { InstanciaRecurrenteBanner } from "@/components/instancia-recurrente-banner";
 import { AppDataProvider } from "@/lib/app-data";
 
 const geistSans = Geist({
@@ -42,6 +43,7 @@ export default function RootLayout({
               <Sidebar />
               <main className="flex-1 overflow-auto bg-slate-50 p-6 dark:bg-slate-950">
                 <PadreParaCerrarBanner />
+                <InstanciaRecurrenteBanner />
                 {children}
               </main>
             </div>
