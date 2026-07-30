@@ -3,7 +3,10 @@ import ical, { type CalendarResponse, type VEvent } from "node-ical";
 import { prisma } from "@/lib/db";
 import type { EventoCalendarioItem } from "@/lib/types";
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
+/// Un feed ICS externo no cambia tan seguido como para justificar
+/// refrescarlo cada pocos minutos — 6 horas alcanza para que un calentado al
+/// abrir la app (ver AppDataProvider) siga sirviendo el resto del día.
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const cacheICS = new Map<string, { data: CalendarResponse; ts: number }>();
 
 async function obtenerICS(url: string): Promise<CalendarResponse> {

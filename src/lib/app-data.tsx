@@ -23,6 +23,7 @@ import type {
 } from "@/lib/types";
 import { padreRecienCerrado } from "@/lib/tarea-tree";
 import { nombreConPeriodo, siguientePeriodo } from "@/lib/recurrencia";
+import { toDateOnlyISO } from "@/lib/utils";
 
 type AppData = {
   /** Todos los clientes, incluidos archivados — usar `clientesActivos` donde
@@ -123,6 +124,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     apiGet<RegistroTiempoItem[]>("/api/registros-tiempo/recientes")
       .then(setRecientes)
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    // Precalienta el caché server-side de los feeds ICS de calendarios
+    // externos (ver /api/calendarios/eventos) apenas arranca la app, para
+    // que la primera vez que alguien tilda "mostrar calendario" en Registro
+    // no tenga que esperar la descarga+parseo del feed completo. No bloquea
+    // el splash de carga ni importa si falla: es solo un adelanto best-effort.
+    const hoy = toDateOnlyISO(new Date());
+    apiGet(`/api/calendarios/eventos?desde=${hoy}&hasta=${hoy}`).catch(() => {});
   }, []);
 
   useEffect(() => {
