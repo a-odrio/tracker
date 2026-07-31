@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, Plus, Search } from "lucide-react";
+import { ChevronRight, Plus, Search, Zap } from "lucide-react";
 import { apiPost } from "@/lib/api-client";
 import type { EstadoItem, TareaItem } from "@/lib/types";
 import { ancestros, hijosDirectos, idsDeSubarbol } from "@/lib/tarea-tree";
@@ -197,6 +197,7 @@ function NodoPicker({
   const [expandido, setExpandido] = useState(profundidad === 0);
   const [agregando, setAgregando] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState("");
+  const [imprevista, setImprevista] = useState(false);
   const [creando, setCreando] = useState(false);
 
   const hijos = hijosDirectos(tarea.id, tareas)
@@ -211,6 +212,7 @@ function NodoPicker({
         parentId: tarea.id,
         nombre: nombreNuevo.trim(),
         estadoId: estadoInicialId,
+        imprevista,
       });
       onTareaCreated(nueva);
     } finally {
@@ -275,6 +277,18 @@ function NodoPicker({
             placeholder="Nombre de la subtarea"
             className="h-7 flex-1 text-xs"
           />
+          <button
+            type="button"
+            onClick={() => setImprevista((v) => !v)}
+            title={imprevista ? "Imprevista (click para desmarcar)" : "Marcar como imprevista"}
+            className={`shrink-0 rounded p-1 ${
+              imprevista
+                ? "text-amber-500"
+                : "text-slate-300 hover:text-slate-400 dark:text-slate-600 dark:hover:text-slate-500"
+            }`}
+          >
+            <Zap size={14} />
+          </button>
           <button
             type="button"
             onClick={crearSubtarea}
